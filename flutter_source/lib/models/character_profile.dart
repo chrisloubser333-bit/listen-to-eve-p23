@@ -14,6 +14,7 @@ class CharacterProfile {
   final String descriptionEn;
   final String descriptionAf;
   final IconData icon;
+  final String avatarAsset;
 
   const CharacterProfile({
     required this.id,
@@ -24,6 +25,7 @@ class CharacterProfile {
     required this.descriptionEn,
     required this.descriptionAf,
     required this.icon,
+    required this.avatarAsset,
   });
 
   String getTagline(bool isAf) => isAf ? taglineAf : taglineEn;
@@ -187,6 +189,7 @@ class CharacterRegistry {
     descriptionEn: 'Clear, attentive listener and intuitive conversational guide.',
     descriptionAf: 'Duidelike, oplettende luisteraar en intuïtiewe gespreksgids.',
     icon: Icons.face_3_rounded,
+    avatarAsset: 'assets/avatar_eve.jpg',
   );
 
   static const CharacterProfile ara = CharacterProfile(
@@ -198,6 +201,7 @@ class CharacterRegistry {
     descriptionEn: 'Lyrical, creative spirit with philosophical depth.',
     descriptionAf: 'Liriese, kreatiewe gees met filosofiese diepte.',
     icon: Icons.auto_awesome_rounded,
+    avatarAsset: 'assets/avatar_ara.jpg',
   );
 
   static const CharacterProfile leo = CharacterProfile(
@@ -209,6 +213,7 @@ class CharacterRegistry {
     descriptionEn: 'Sharp, solutions-oriented thinker who cuts straight to the core.',
     descriptionAf: 'Skerp, oplossingsgerigte denker wat reguit na die kern beweeg.',
     icon: Icons.bolt_rounded,
+    avatarAsset: 'assets/avatar_leo.jpg',
   );
 
   static const CharacterProfile rex = CharacterProfile(
@@ -220,6 +225,7 @@ class CharacterRegistry {
     descriptionEn: 'Dynamic, quick-witted, and delightfully characterful.',
     descriptionAf: 'Dinamies, skerpsinnig en heerlik karaktervol.',
     icon: Icons.local_fire_department_rounded,
+    avatarAsset: 'assets/avatar_rex.jpg',
   );
 
   static const CharacterProfile sal = CharacterProfile(
@@ -231,6 +237,7 @@ class CharacterRegistry {
     descriptionEn: 'Calm observer with steady perspective and wry warmth.',
     descriptionAf: 'Kalm waarnemer met stewige perspektief en droë warmte.',
     icon: Icons.spa_rounded,
+    avatarAsset: 'assets/avatar_sal.jpg',
   );
 
   /// All 5 characters in canonical order.

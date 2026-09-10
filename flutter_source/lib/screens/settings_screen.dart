@@ -168,10 +168,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ListTile(
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  leading: Icon(
-                    character.icon,
-                    size: 26,
-                    color: selected ? AppTheme.primary : AppTheme.textSecondary,
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected ? AppTheme.primary : AppTheme.border,
+                        width: 1.5,
+                      ),
+                      boxShadow: selected ? AppTheme.glow(AppTheme.primary, blur: 8, spread: 0) : null,
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        character.avatarAsset,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          character.icon,
+                          size: 20,
+                          color: selected ? AppTheme.primary : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                   title: Row(
                     children: [

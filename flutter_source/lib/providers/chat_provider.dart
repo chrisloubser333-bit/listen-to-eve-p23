@@ -1,3 +1,4 @@
+import '../services/offline_conversational_fallback.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/character_profile.dart';
@@ -134,15 +135,40 @@ class ChatProvider extends ChangeNotifier {
           .where((s) => s.isNotEmpty)
           .join('\n\n');
 
-      // 3. Generate response with bounded prompt context
-      final reply = await _aiService.chatCompletion(
-        messages: history,
-        systemPrompt: fullSystemPrompt,
-      );
+      // 3. Generate response with bounded prompt context (with offline conversational fallback)
+      String cleanReply;
+      try {
+        if (_aiService.hasApiKey) {
+          final reply = await _aiService.chatCompletion(
+            messages: history,
+            systemPrompt: fullSystemPrompt,
+          );
+          cleanReply = reply.trim();
+        } else {
+          cleanReply = OfflineConversationalFallback.generateReply(
+            userMessage: text,
+            characterId: _settings.characterId,
+            language: _settings.language,
+            rememberedContext: memoryContext,
+          );
+        }
+      } catch (providerError) {
+        debugPrint('Provider error, using offline conversational fallback: $providerError');
+        cleanReply = OfflineConversationalFallback.generateReply(
+          userMessage: text,
+          characterId: _settings.characterId,
+          language: _settings.language,
+          rememberedContext: memoryContext,
+        );
+      }
 
-      final cleanReply = reply.trim();
       if (cleanReply.isEmpty) {
-        throw Exception('Received empty response from AI provider.');
+        cleanReply = OfflineConversationalFallback.generateReply(
+          userMessage: text,
+          characterId: _settings.characterId,
+          language: _settings.language,
+          rememberedContext: memoryContext,
+        );
       }
 
       final assistantMsg = ChatMessage(
