@@ -1,0 +1,44 @@
+name: listen_with_eve
+description: Listen with Eve – Cross-platform Grok voice assistant with English/Afrikaans support, voice input/output and custom voices.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & State
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  google_fonts: ^6.2.1
+
+  # Networking
+  http: ^1.2.2
+  web_socket_channel: ^3.0.1
+
+  # Audio recording & playback
+  record: ^7.1.1
+  just_audio: ^0.9.40
+  audio_session: ^0.1.21
+  permission_handler: ^11.3.1
+  path_provider: ^2.1.4
+
+  # Storage
+  shared_preferences: ^2.3.2
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
