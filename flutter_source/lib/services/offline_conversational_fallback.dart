@@ -112,7 +112,7 @@ class OfflineConversationalFallback {
             : 'Sharp, focused, and ready to get things done. How is your day shaping up?';
       case 'rex':
         return isAf
-            ? 'Vol energie! Nooit 'n vervelige oomblik nie. En jy?'
+            ? 'Vol energie! Nooit \'n vervelige oomblik nie. En jy?'
             : 'Full of energy as always! Never a dull moment. How about you?';
       case 'sal':
         return isAf
@@ -142,7 +142,7 @@ class OfflineConversationalFallback {
             : 'I am Rex! Bold, quick-witted, and always ready to bring energy and momentum to our chats.';
       case 'sal':
         return isAf
-            ? 'Ek is Sal. 'n Rustige waarnemer met goeie perspektief en 'n bietjie droë warmte.'
+            ? 'Ek is Sal. \'n Rustige waarnemer met goeie perspektief en \'n bietjie droë warmte.'
             : 'I am Sal. A calm, grounded observer with a steady perspective and a little wry warmth.';
       case 'eve':
       default:
@@ -168,7 +168,7 @@ class OfflineConversationalFallback {
             : 'Absolutely! I like where your head is at. Let us take this and run with it.';
       case 'sal':
         return isAf
-            ? 'Goeie punt. Neem 'n oomblik om dit in te neem — dinge lyk dikwels duideliker met 'n bietjie asemruimte.'
+            ? 'Goeie punt. Neem \'n oomblik om dit in te neem — dinge lyk dikwels duideliker met \'n bietjie asemruimte.'
             : 'Good perspective. Sometimes letting an idea breathe gives us the clearest view. What feels like the next right step?';
       case 'eve':
       default:
