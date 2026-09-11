@@ -398,7 +398,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 ),
               ),
               selected: isSelected,
-              onSelected: (_) => settings.setActiveCharacter(c),
+              onSelected: (_) => settings.setCharacterId(c.id),
               backgroundColor: AppTheme.surface,
               selectedColor: AppTheme.primary,
               checkmarkColor: AppTheme.background,

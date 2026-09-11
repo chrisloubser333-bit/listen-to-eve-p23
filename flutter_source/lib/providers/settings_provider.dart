@@ -95,5 +95,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String get systemPrompt => activeCharacter.getSystemPrompt(_language);
+  
+  Future<void> setActiveCharacter(CharacterProfile character, {bool syncVoice = true}) async {
+    await setCharacterId(character.id, syncVoice: syncVoice);
+  }
+String get systemPrompt => activeCharacter.getSystemPrompt(_language);
 }
