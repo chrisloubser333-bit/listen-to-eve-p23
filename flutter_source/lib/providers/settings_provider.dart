@@ -13,6 +13,8 @@ class SettingsProvider extends ChangeNotifier {
   String _voiceId = 'eve';
   String _characterId = 'eve';
   bool _darkMode = true;
+  double _silencePauseSeconds = 1.8;
+  bool _autoVoiceReply = true;
   String _aiProvider = 'xai'; // 'xai' or 'gemini'
   List<VoiceOption> _customVoices = [];
 
@@ -24,6 +26,8 @@ class SettingsProvider extends ChangeNotifier {
   String get voiceId => _voiceId;
   String get characterId => _characterId;
   bool get darkMode => _darkMode;
+  double get silencePauseSeconds => _silencePauseSeconds;
+  bool get autoVoiceReply => _autoVoiceReply;
   String get aiProvider => _aiProvider;
   AiProviderType get activeAiProviderType =>
       AiProviderType.fromString(_aiProvider);
@@ -49,6 +53,8 @@ class SettingsProvider extends ChangeNotifier {
     _voiceId = await _storage.getVoiceId();
     _characterId = await _storage.getCharacterId();
     _darkMode = await _storage.getDarkMode();
+    _silencePauseSeconds = await _storage.getSilencePauseSeconds();
+    _autoVoiceReply = await _storage.getAutoVoiceReply();
     _aiProvider = await _storage.getActiveAiProvider();
     _switchableAiService?.setActiveProvider(activeAiProviderType);
     notifyListeners();
@@ -81,6 +87,18 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setVoiceId(String id) async {
     _voiceId = id;
     await _storage.saveVoiceId(id);
+    notifyListeners();
+  }
+
+  Future<void> setSilencePauseSeconds(double seconds) async {
+    _silencePauseSeconds = seconds.clamp(1.0, 3.0);
+    await _storage.saveSilencePauseSeconds(_silencePauseSeconds);
+    notifyListeners();
+  }
+
+  Future<void> setAutoVoiceReply(bool value) async {
+    _autoVoiceReply = value;
+    await _storage.saveAutoVoiceReply(value);
     notifyListeners();
   }
 

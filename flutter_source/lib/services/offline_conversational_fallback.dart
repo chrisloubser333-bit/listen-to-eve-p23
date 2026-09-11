@@ -31,8 +31,8 @@ class OfflineConversationalFallback {
         if (match != null) {
           final name = match.group(1);
           return isAf
-              ? 'Jou naam is ! Ek het dit goed onthou.'
-              : 'Your name is ! I remembered.';
+              ? 'Jou naam is $name! Ek het dit goed onthou.'
+              : 'Your name is $name! I remembered.';
         }
       }
     }

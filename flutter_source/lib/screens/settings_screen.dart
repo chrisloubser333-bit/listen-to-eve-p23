@@ -306,6 +306,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
             label: Text(isAf ? 'Leer \'n nuwe stem' : 'Teach a new voice'),
           ),
 
+          const SizedBox(height: 20),
+
+          // Voice Interaction Controls (Speech silence pause & auto voice reply)
+          _sectionTitle(isAf ? 'Steminteraksie & Pouse' : 'Speech & Silence Detection'),
+          _glassCard(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isAf ? 'Stiltestoppause' : 'Silence Pause Before Send',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${settings.silencePauseSeconds.toStringAsFixed(1)}s',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isAf
+                        ? 'Wagtyd sonder spraak voor boodskap outomaties gestuur word (1.0s - 3.0s).'
+                        : 'How long Eve waits in silence before automatically sending your speech.',
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: AppTheme.primary,
+                      inactiveTrackColor: AppTheme.border,
+                      thumbColor: AppTheme.primary,
+                    ),
+                    child: Slider(
+                      value: settings.silencePauseSeconds,
+                      min: 1.0,
+                      max: 3.0,
+                      divisions: 20,
+                      onChanged: (val) => settings.setSilencePauseSeconds(val),
+                    ),
+                  ),
+                  const Divider(color: AppTheme.border, height: 16),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      isAf ? 'Lees antwoorde hardop' : 'Speak Responses Aloud',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      isAf
+                          ? 'Elke karakter antwoord met hul eie unieke stem'
+                          : 'Each character replies using their unique human-like voice',
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    ),
+                    value: settings.autoVoiceReply,
+                    activeColor: AppTheme.primary,
+                    onChanged: (val) => settings.setAutoVoiceReply(val),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 28),
 
           // Memory

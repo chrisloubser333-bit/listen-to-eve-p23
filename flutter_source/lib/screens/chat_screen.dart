@@ -315,15 +315,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   VoiceButton(
                     isListening: chat.isListening,
                     isSpeaking: chat.isSpeaking,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isAf
-                                ? 'Stemopname word verwerk. Tik gerus jou boodskap of vra enige vraag.'
-                                : 'Full realtime voice pipeline is scaffolded. Text chat is active.',
-                          ),
-                        ),
+                    onPressed: () async {
+                      if (chat.isSpeaking) {
+                        await chat.stopSpeaking();
+                        return;
+                      }
+                      await chat.toggleListening(
+                        onPartialText: (partial) {
+                          setState(() {
+                            _controller.text = partial;
+                          });
+                        },
                       );
                     },
                   ),
@@ -453,17 +455,23 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Photographic Avatar with live status glow halo
-          Container(
-            width: 72,
-            height: 72,
+          // Photographic Avatar with live status glow halo (tap to stop speech)
+          GestureDetector(
+            onTap: () {
+              if (chat.isSpeaking) {
+                chat.stopSpeaking();
+              }
+            },
+            child: Container(
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
                 color: statusColor.withOpacity(0.85),
-                width: 2.5,
+                width: 3.0,
               ),
-              boxShadow: AppTheme.glow(statusColor, blur: 16, spread: 1),
+              boxShadow: AppTheme.glow(statusColor, blur: 22, spread: 2),
             ),
             child: ClipOval(
               child: Image.asset(
@@ -471,11 +479,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Icon(
                   character.icon,
-                  size: 38,
+                  size: 52,
                   color: statusColor,
                 ),
               ),
             ),
+          ),
           ),
           const SizedBox(height: 6),
           // Character Name

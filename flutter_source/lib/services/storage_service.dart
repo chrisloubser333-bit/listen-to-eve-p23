@@ -14,6 +14,8 @@ class StorageService {
   static const _keyMessages = 'chat_messages';
   static const _keyMemories = 'persisted_memories';
   static const _keySearchProxyEndpoint = 'search_proxy_endpoint';
+  static const _keySilencePause = 'silence_pause_seconds';
+  static const _keyAutoVoiceReply = 'auto_voice_reply';
 
   late SharedPreferences _prefs;
 
@@ -144,6 +146,24 @@ class StorageService {
     } catch (_) {
       return [];
     }
+  }
+
+  // Voice silence pause duration (default 1.8s, range 1.0s - 3.0s)
+  Future<void> saveSilencePauseSeconds(double seconds) async {
+    await _prefs.setDouble(_keySilencePause, seconds);
+  }
+
+  Future<double> getSilencePauseSeconds() async {
+    return _prefs.getDouble(_keySilencePause) ?? 1.8;
+  }
+
+  // Auto Voice Reply (read character responses aloud automatically)
+  Future<void> saveAutoVoiceReply(bool enabled) async {
+    await _prefs.setBool(_keyAutoVoiceReply, enabled);
+  }
+
+  Future<bool> getAutoVoiceReply() async {
+    return _prefs.getBool(_keyAutoVoiceReply) ?? true;
   }
 
   Future<void> clearMemories() async {

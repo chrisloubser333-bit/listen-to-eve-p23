@@ -1,3 +1,4 @@
+import '../services/voice_service.dart';
 import '../services/offline_conversational_fallback.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +17,7 @@ class ChatProvider extends ChangeNotifier {
   final SettingsProvider _settings;
   final StorageService _storage;
   final MemoryService? _memoryService;
+  final VoiceService _voiceService = VoiceService();
   final IntelligenceOrchestrator? _orchestrator;
   final _uuid = const Uuid();
 
@@ -34,10 +36,12 @@ class ChatProvider extends ChangeNotifier {
     this._orchestrator,
   ]) {
     _loadHistory();
+    _initVoiceService();
   }
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
+  VoiceService get voiceService => _voiceService;
   bool get isListening => _isListening;
   bool get isSpeaking => _isSpeaking;
   String? get error => _error;
@@ -62,6 +66,43 @@ class ChatProvider extends ChangeNotifier {
     _aiService.setApiKey(key);
     await _storage.saveApiKeyForProvider(_settings.aiProvider, key);
     notifyListeners();
+  }
+
+
+  void _initVoiceService() {
+    _voiceService.onListeningStateChanged = (listening) {
+      _isListening = listening;
+      notifyListeners();
+    };
+    _voiceService.onSpeakingStateChanged = (speaking) {
+      _isSpeaking = speaking;
+      notifyListeners();
+    };
+    _voiceService.onSpeechCompleted = (recognizedText) {
+      if (recognizedText.trim().isNotEmpty) {
+        sendText(recognizedText.trim());
+      }
+    };
+  }
+
+  /// Toggles speech recognition using user configured pause duration
+  Future<void> toggleListening({Function(String partial)? onPartialText}) async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+    } else {
+      if (_isSpeaking) {
+        await _voiceService.stopSpeaking();
+      }
+      _voiceService.onPartialText = onPartialText;
+      await _voiceService.startListening(
+        language: _settings.language,
+        pauseDurationSeconds: _settings.silencePauseSeconds,
+      );
+    }
+  }
+
+  Future<void> stopSpeaking() async {
+    await _voiceService.stopSpeaking();
   }
 
   Future<void> sendText(String text) async {
@@ -192,8 +233,15 @@ class ChatProvider extends ChangeNotifier {
         }
       }
 
-      // Optionally speak the reply
-      // await _speak(reply);
+      // Speak the reply with character-specific humanized voice
+      if (_settings.autoVoiceReply && cleanReply.trim().isNotEmpty) {
+        // Fire and let TTS speak without blocking the UI
+        _voiceService.speak(
+          text: cleanReply,
+          characterId: _settings.characterId,
+          language: _settings.language,
+        );
+      }
 
       await _storage.saveMessages(_messages);
     } catch (e, stack) {
