@@ -1,5 +1,3 @@
-import 'dart:math';
-
 /// Provides resilient conversational responses when an external AI provider
 /// API key is not yet configured or when offline.
 ///
@@ -63,7 +61,21 @@ class OfflineConversationalFallback {
       return _getHowAreYou(characterId, isAf);
     }
 
-    // 5. Who are you
+    // 5. Visual appearance / What do you look like
+    if (query.contains('look like') ||
+        query.contains('hoe lyk jy') ||
+        query.contains('what do you look like') ||
+        query.contains('show me yourself') ||
+        query.contains('jou hare') ||
+        query.contains('your hair') ||
+        query.contains('your eyes') ||
+        query.contains('jou oë') ||
+        query.contains('your face') ||
+        query.contains('jou gesig')) {
+      return _getAppearanceReply(characterId, isAf);
+    }
+
+    // 6. Who are you
     if (query.contains('who are you') ||
         query.contains('wie is jy') ||
         query.contains('wat is jy')) {
@@ -123,6 +135,32 @@ class OfflineConversationalFallback {
         return isAf
             ? 'Dit gaan uitstekend, dankie! Ek luister aandagtig en sien uit om te gesels.'
             : 'I am doing wonderfully, thank you! Attentive and right here with you. How are you doing?';
+    }
+  }
+
+  static String _getAppearanceReply(String characterId, bool isAf) {
+    switch (characterId.toLowerCase()) {
+      case 'ara':
+        return isAf
+            ? 'Ek het donker, golwende hare en diep, nadenkende bruin oë met 'n kunstige en grasieuse voorkoms. Jy kan my foto bo-aan ons klets sien — tik gerus daarop om my van nader te bekyk!'
+            : 'I have long dark wavy hair and thoughtful brown eyes with an artistic, expressive presence. You can see my portrait right above in our chat — tap it anytime to get a closer look!';
+      case 'leo':
+        return isAf
+            ? 'Ek het netjiese donker hare, 'n skerp kaaklyn en dra 'n stylvolle donker baadjie met 'n gefokusde, selfversekerde styl. Tik gerus op my portret bo-aan as jy wil kyk.'
+            : 'I have neatly styled dark hair, sharp features, and wear a tailored dark jacket with a focused, confident presence. Tap my portrait above if you would like to see!';
+      case 'rex':
+        return isAf
+            ? 'Ek het 'n lewendige, energieke glimlag en 'n gemaklike, dinamiese sportiewe styl — altyd reg vir aksie. Tik op my prentjie bo om my van nader te sien!'
+            : 'I sport an energetic grin, casual athletic style, and a high-energy vibe. You can tap my photo at the top of our chat to see the full portrait!';
+      case 'sal':
+        return isAf
+            ? 'Ek het 'n netjiese natuurlike baard, vriendelike rustige oë en dra aardse, gemaklike klere met 'n ontspanne gevoel. Tik gerus op my avatar bo-aan om te sien.'
+            : 'I have a neat natural beard, kind observant eyes, and warm, casual earth-toned attire with an easygoing presence. Tap my avatar above to see.';
+      case 'eve':
+      default:
+        return isAf
+            ? 'Ek het sagte golwende heuningbruin hare wat my gesig omraam, vonkelende hasel-groen oë en 'n sagte, warm glimlag met 'n fyn goue hangertjie. Jy kan my foto bo-aan die skerm sien — tik gerus daarop om my volgrootte portret te sien!'
+            : 'I have soft wavy honey-brown hair framing my face, warm sparkling hazel-green eyes, and a gentle smile with a delicate gold chain necklace. You can see my portrait right at the top — tap on my avatar anytime to see my full picture!';
     }
   }
 

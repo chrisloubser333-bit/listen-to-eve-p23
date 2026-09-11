@@ -8,6 +8,7 @@ import 'settings_screen.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/voice_button.dart';
 import '../theme/app_theme.dart';
+import '../widgets/exploded_image_modal.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -257,6 +258,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                                 avatarAsset: msg.role == MessageRole.assistant
                                     ? character.avatarAsset
                                     : null,
+                                accentColor: character.themeColor,
                               );
                             },
                           ),
@@ -387,14 +389,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   errorBuilder: (_, __, ___) => Icon(
                     c.icon,
                     size: 16,
-                    color: isSelected ? AppTheme.background : AppTheme.primary,
+                    color: isSelected ? c.themeColor : AppTheme.textSecondary,
                   ),
                 ),
               ),
               label: Text(
                 c.name,
                 style: TextStyle(
-                  color: isSelected ? AppTheme.background : AppTheme.textPrimary,
+                  color: isSelected ? Colors.white : AppTheme.textPrimary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 13,
                 ),
@@ -438,11 +440,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         ? Colors.amber
         : chat.isSpeaking
             ? AppTheme.secondary
-            : AppTheme.primary;
+            : character.themeColor;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: BoxDecoration(
         color: AppTheme.background,
         border: Border(
@@ -455,36 +457,75 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Photographic Avatar with live status glow halo (tap to stop speech)
+          // Photographic Avatar enlarged by +50% (150x150) with character's signature outline & glow
+          // Tapping opens the interactive Exploded View with Zoom, Save & Share!
           GestureDetector(
             onTap: () {
               if (chat.isSpeaking) {
                 chat.stopSpeaking();
               }
+              ExplodedImageModal.show(
+                context,
+                title: character.name,
+                subtitle: '${character.getTagline(isAf)} • ${character.getDescription(isAf)}',
+                assetPath: character.avatarAsset,
+                accentColor: character.themeColor,
+                isAvatar: true,
+              );
             },
             child: Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: statusColor.withOpacity(0.85),
-                width: 3.0,
-              ),
-              boxShadow: AppTheme.glow(statusColor, blur: 22, spread: 2),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                character.avatarAsset,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(
-                  character.icon,
-                  size: 52,
-                  color: statusColor,
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: statusColor.withOpacity(0.95),
+                  width: 3.5,
                 ),
+                boxShadow: [
+                  ...AppTheme.glow(statusColor, blur: 26, spread: 3),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipOval(
+                      child: Image.asset(
+                        character.avatarAsset,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          character.icon,
+                          size: 72,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: statusColor, width: 1.5),
+                      ),
+                      child: Icon(
+                        Icons.fullscreen_rounded,
+                        size: 16,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
           ),
           const SizedBox(height: 6),
           // Character Name

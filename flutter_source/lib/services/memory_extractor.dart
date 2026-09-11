@@ -171,16 +171,14 @@ class DeterministicMemoryExtractor implements MemoryExtractor {
 
   /// Explicit command: "Remember that...", "Please remember...", "Onthou dat..."
   MemoryCandidate? _checkExplicitRemember(String text, String? characterId) {
-    final lower = text.toLowerCase();
-
     final patterns = [
       RegExp(r'^(?:please\s+)?remember\s+(?:that\s+)?(.+)', caseSensitive: false),
-      RegExp(r"^(?:don't|do\s+not)\s+forget\s+(?:that\s+)?(.+)", caseSensitive: false),
+      RegExp(r'^(?:don\'t|do\s+not)\s+forget\s+(?:that\s+)?(.+)', caseSensitive: false),
       RegExp(r'^(?:asseblief\s+)?onthou\s+(?:dat\s+)?(.+)', caseSensitive: false),
       RegExp(r'^(?:moenie|moet\s+nie)\s+vergeet\s+(?:dat\s+)?(.+)', caseSensitive: false),
       // Trailing explicit instructions: "My name is Chris. Remember that.", "Ek bly in Kaapstad. Onthou dit."
       RegExp(r'^(.+?)(?:[.,;!]|\s+)+(?:please\s+)?remember\s+(?:that|this)?(?:\s+please)?[.!]?$', caseSensitive: false),
-      RegExp(r"^(.+?)(?:[.,;!]|\s+)+(?:don't|do\s+not)\s+forget\s+(?:that|this)?[.!]?$", caseSensitive: false),
+      RegExp(r'^(.+?)(?:[.,;!]|\s+)+(?:don\'t|do\s+not)\s+forget\s+(?:that|this)?[.!]?$', caseSensitive: false),
       RegExp(r'^(.+?)(?:[.,;!]|\s+)+(?:asseblief\s+)?onthou\s+(?:dit|dat)?(?:\s+asseblief)?[.!]?$', caseSensitive: false),
       RegExp(r'^(.+?)(?:[.,;!]|\s+)+(?:moenie|moet\s+nie)\s+vergeet\s+(?:dit|dat)?[.!]?$', caseSensitive: false),
     ];
@@ -243,7 +241,7 @@ class DeterministicMemoryExtractor implements MemoryExtractor {
       RegExp(r'\b(?:i\s+prefer|i\s+really\s+prefer)\s+(.+)', caseSensitive: false),
       RegExp(r'\b(?:my\s+preference\s+is)\s+(.+)', caseSensitive: false),
       RegExp(r'\b(?:i\s+really\s+like|i\s+love)\s+(.+)', caseSensitive: false),
-      RegExp(r"\b(?:i\s+dislike|i\s+hate|i\s+don't\s+like)\s+(.+)", caseSensitive: false),
+      RegExp(r'\b(?:i\s+dislike|i\s+hate|i\s+don\'t\s+like)\s+(.+)', caseSensitive: false),
       RegExp(r'\b(?:ek\s+verkies|ek\s+hou\s+baie\s+van)\s+(.+)', caseSensitive: false),
       RegExp(r'\b(?:ek\s+hou\s+nie\s+van)\s+(.+)', caseSensitive: false),
     ];
@@ -335,7 +333,7 @@ class DeterministicMemoryExtractor implements MemoryExtractor {
   MemoryCandidate? _checkSkills(String text, String? characterId) {
     final patterns = [
       RegExp(r'\b(?:i\s+code\s+in|i\s+program\s+in|i\s+develop\s+with|my\s+tech\s+stack)\s+(.+)', caseSensitive: false),
-      RegExp(r"\b(?:i\s+am\s+learning|i'm\s+studying)\s+(.+)", caseSensitive: false),
+      RegExp(r'\b(?:i\s+am\s+learning|i\'m\s+studying)\s+(.+)', caseSensitive: false),
       RegExp(r'\b(?:ek\s+programmeer\s+in|ek\s+leer\s+tans|ek\s+studeer)\s+(.+)', caseSensitive: false),
     ];
 
@@ -357,7 +355,7 @@ class DeterministicMemoryExtractor implements MemoryExtractor {
   MemoryCandidate? _checkEvents(String text, String? characterId) {
     final patterns = [
       RegExp(r'\b(?:i\s+just\s+got\s+a\s+new|i\s+graduated|i\s+started\s+a\s+new|i\s+bought\s+a)\s+(.+)', caseSensitive: false),
-      RegExp(r"\b(?:ek\s+het\s+pas\s+'n\s+nuwe|ek\s+het\s+gegradueer|ek\s+begin\s+'n\s+nuwe)\s+(.+)", caseSensitive: false),
+      RegExp(r'\b(?:ek\s+het\s+pas\s+\'n\s+nuwe|ek\s+het\s+gegradueer|ek\s+begin\s+\'n\s+nuwe)\s+(.+)', caseSensitive: false),
     ];
 
     for (final pattern in patterns) {

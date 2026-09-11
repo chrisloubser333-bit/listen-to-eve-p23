@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import '../models/message.dart';
+import 'dart:convert';
 import '../theme/app_theme.dart';
+import 'exploded_image_modal.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final String? avatarAsset;
+  final Color accentColor;
 
   const MessageBubble({
     super.key,
     required this.message,
     this.avatarAsset,
+    this.accentColor = AppTheme.secondary,
   });
 
   @override
@@ -31,10 +35,10 @@ class MessageBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppTheme.secondary.withOpacity(0.5),
+                  color: accentColor.withOpacity(0.5),
                   width: 1.5,
                 ),
-                boxShadow: AppTheme.glow(AppTheme.secondary, blur: 8, spread: 0),
+                boxShadow: AppTheme.glow(accentColor, blur: 8, spread: 0),
               ),
               child: ClipOval(
                 child: avatarAsset != null
@@ -44,13 +48,13 @@ class MessageBubble extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(
                           Icons.face_3_rounded,
                           size: 18,
-                          color: AppTheme.secondary,
+                          color: accentColor,
                         ),
                       )
                     : const Icon(
                         Icons.face_3_rounded,
                         size: 18,
-                        color: AppTheme.secondary,
+                        color: accentColor,
                       ),
               ),
             ),
@@ -73,8 +77,8 @@ class MessageBubble extends StatelessWidget {
                       )
                     : LinearGradient(
                         colors: [
-                          AppTheme.secondary.withOpacity(0.20),
-                          AppTheme.secondary.withOpacity(0.08),
+                          accentColor.withOpacity(0.20),
+                          accentColor.withOpacity(0.08),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -88,12 +92,12 @@ class MessageBubble extends StatelessWidget {
                 border: Border.all(
                   color: isUser
                       ? AppTheme.primary.withOpacity(0.35)
-                      : AppTheme.secondary.withOpacity(0.30),
+                      : accentColor.withOpacity(0.30),
                   width: 1,
                 ),
                 boxShadow: isUser
                     ? AppTheme.glow(AppTheme.primary, blur: 10, spread: 0)
-                    : AppTheme.glow(AppTheme.secondary, blur: 10, spread: 0),
+                    : AppTheme.glow(accentColor, blur: 10, spread: 0),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,6 +141,6 @@ class MessageBubble extends StatelessWidget {
   String _formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
-    return ':';
+    return '$h:$m';
   }
 }

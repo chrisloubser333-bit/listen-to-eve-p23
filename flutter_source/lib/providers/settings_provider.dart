@@ -15,6 +15,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _darkMode = true;
   double _silencePauseSeconds = 1.8;
   bool _autoVoiceReply = true;
+  double _speechSpeed = 0.85; // Natural, calm human cadence (0.5x - 1.5x)
   String _aiProvider = 'xai'; // 'xai' or 'gemini'
   List<VoiceOption> _customVoices = [];
 
@@ -28,6 +29,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get darkMode => _darkMode;
   double get silencePauseSeconds => _silencePauseSeconds;
   bool get autoVoiceReply => _autoVoiceReply;
+  double get speechSpeed => _speechSpeed;
   String get aiProvider => _aiProvider;
   AiProviderType get activeAiProviderType =>
       AiProviderType.fromString(_aiProvider);
@@ -55,6 +57,7 @@ class SettingsProvider extends ChangeNotifier {
     _darkMode = await _storage.getDarkMode();
     _silencePauseSeconds = await _storage.getSilencePauseSeconds();
     _autoVoiceReply = await _storage.getAutoVoiceReply();
+    _speechSpeed = await _storage.getSpeechSpeed();
     _aiProvider = await _storage.getActiveAiProvider();
     _switchableAiService?.setActiveProvider(activeAiProviderType);
     notifyListeners();
@@ -93,6 +96,12 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setSilencePauseSeconds(double seconds) async {
     _silencePauseSeconds = seconds.clamp(1.0, 3.0);
     await _storage.saveSilencePauseSeconds(_silencePauseSeconds);
+    notifyListeners();
+  }
+
+  Future<void> setSpeechSpeed(double speed) async {
+    _speechSpeed = speed;
+    await _storage.saveSpeechSpeed(speed);
     notifyListeners();
   }
 

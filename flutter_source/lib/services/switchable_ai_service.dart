@@ -55,6 +55,11 @@ class SwitchableAiService implements AiService {
   }
 
   @override
+  Future<String> generateImage(String prompt) {
+    return activeService.generateImage(prompt);
+  }
+
+  @override
   void disconnectRealtime() {
     for (final service in _providers.values) {
       try {

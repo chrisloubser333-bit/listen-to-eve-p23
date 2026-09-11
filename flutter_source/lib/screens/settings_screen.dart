@@ -99,9 +99,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () async {
                         final key = _apiKeyController.text.trim();
                         if (key.isNotEmpty) {
+                          final messenger = ScaffoldMessenger.of(context);
                           await chat.setApiKey(key);
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text(isAf
                                     ? 'API-sleutel gestoor'
@@ -383,7 +384,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                     ),
                     value: settings.autoVoiceReply,
-                    activeColor: AppTheme.primary,
+                    activeThumbColor: AppTheme.primary,
                     onChanged: (val) => settings.setAutoVoiceReply(val),
                   ),
                 ],

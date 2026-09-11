@@ -9,6 +9,7 @@ class StorageService {
   static const _keyActiveProvider = 'active_ai_provider';
   static const _keyLanguage = 'preferred_language';
   static const _keyVoiceId = 'selected_voice_id';
+  static const _keySpeechSpeed = 'speech_speed_multiplier';
   static const _keyCharacterId = 'selected_character_id';
   static const _keyDarkMode = 'dark_mode';
   static const _keyMessages = 'chat_messages';
@@ -77,6 +78,15 @@ class StorageService {
 
   Future<String> getLanguage() async {
     return _prefs.getString(_keyLanguage) ?? 'en';
+  }
+
+  // Speech Speed multiplier (0.5x to 1.5x, default 0.85x for calm human pacing)
+  Future<void> saveSpeechSpeed(double speed) async {
+    await _prefs.setDouble(_keySpeechSpeed, speed);
+  }
+
+  Future<double> getSpeechSpeed() async {
+    return _prefs.getDouble(_keySpeechSpeed) ?? 0.85;
   }
 
   // Voice

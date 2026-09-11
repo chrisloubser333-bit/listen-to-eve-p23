@@ -133,11 +133,96 @@ class ChatProvider extends ChangeNotifier {
           ? rawHistory.sublist(rawHistory.length - maxHistoryTurns)
           : rawHistory;
 
+      // 0. Image Generation Intent Detection (per AGENTS.md Rule 11 & User Request)
+      final lowerText = text.trim().toLowerCase();
+      final isImageIntent = lowerText.startsWith('create an image') ||
+          lowerText.startsWith('create a picture') ||
+          lowerText.startsWith('generate an image') ||
+          lowerText.startsWith('generate a picture') ||
+          lowerText.startsWith('draw ') ||
+          lowerText.startsWith('paint ') ||
+          lowerText.startsWith('teken ') ||
+          lowerText.startsWith('skep 'n prent') ||
+          lowerText.startsWith('maak 'n prent') ||
+          lowerText.startsWith('maak 'n foto') ||
+          lowerText.startsWith('genereer 'n prent') ||
+          lowerText.contains('create an image of') ||
+          lowerText.contains('generate an image of') ||
+          lowerText.contains('draw an image of') ||
+          lowerText.contains('draw a picture of') ||
+          lowerText.contains('teken 'n prent van');
+
+      if (isImageIntent) {
+        String promptToGenerate = text.trim();
+        // Clean prompt prefixes for clean visual prompt
+        final prefixes = [
+          'create an image of',
+          'create a picture of',
+          'generate an image of',
+          'generate a picture of',
+          'draw an image of',
+          'draw a picture of',
+          'create an image',
+          'generate an image',
+          'draw ',
+          'paint ',
+          'teken 'n prent van',
+          'skep 'n prent van',
+          'maak 'n prent van',
+          'maak 'n foto van',
+          'genereer 'n prent van',
+          'teken ',
+        ];
+        for (final p in prefixes) {
+          if (lowerText.startsWith(p)) {
+            promptToGenerate = text.substring(p.length).trim();
+            break;
+          }
+        }
+        if (promptToGenerate.isEmpty) promptToGenerate = text.trim();
+
+        try {
+          final imageUrl = await _aiService.generateImage(promptToGenerate);
+          final isAf = _settings.language == 'af';
+          final confirmationText = isAf
+              ? 'Hier is die prent wat ek vir jou geskep het: "$promptToGenerate"'
+              : 'Here is the image I created for you: "$promptToGenerate"';
+
+          final imageMsg = ChatMessage(
+            id: _uuid.v4(),
+            role: MessageRole.assistant,
+            content: confirmationText,
+            timestamp: DateTime.now(),
+            imageUrl: imageUrl,
+            imagePrompt: promptToGenerate,
+          );
+          _messages.add(imageMsg);
+
+          // Voice announce image creation if autoVoiceReply is active (Rule 12 compliant)
+          if (_settings.autoVoiceReply) {
+            _voiceService.speak(
+              text: isAf ? 'Hier is jou prent!' : 'Here is your image!',
+              characterId: _settings.characterId,
+              language: _settings.language,
+              speedMultiplier: _settings.speechSpeed,
+            );
+          }
+
+          await _storage.saveMessages(_messages);
+          _isLoading = false;
+          notifyListeners();
+          return;
+        } catch (imgErr) {
+          debugPrint('Image generation error: $imgErr');
+          // Proceed to normal conversational handler if image generation encountered a hard issue
+        }
+      }
+
       // 1. Retrieve relevant memories (bounded top-K, character-scoped)
       List<MemoryItem> recalledMemories = [];
       if (_memoryService != null) {
         try {
-          recalledMemories = await _memoryService!.retrieveRelevantMemories(
+          recalledMemories = await _memoryService.retrieveRelevantMemories(
             text,
             limit: _memoryTopK,
             characterId: _settings.characterId,
@@ -159,7 +244,7 @@ class ChatProvider extends ChangeNotifier {
       ToolResult? toolResult;
       if (_orchestrator != null) {
         try {
-          toolResult = await _orchestrator!.evaluateAndExecute(
+          toolResult = await _orchestrator.evaluateAndExecute(
             text,
             conversationHistory: history,
             parameters: {'language': _settings.language},
@@ -223,7 +308,7 @@ class ChatProvider extends ChangeNotifier {
       // 4. Lightweight deterministic candidate detection (Zero extra AI network calls)
       if (_memoryService != null) {
         try {
-          await _memoryService!.processUserMessage(
+          await _memoryService.processUserMessage(
             text,
             characterId: _settings.characterId,
             language: _settings.language,
@@ -240,13 +325,14 @@ class ChatProvider extends ChangeNotifier {
           text: cleanReply,
           characterId: _settings.characterId,
           language: _settings.language,
+          speedMultiplier: _settings.speechSpeed,
         );
       }
 
       await _storage.saveMessages(_messages);
     } catch (e, stack) {
-      print('CHAT ERROR: $e');
-      print(stack);
+      debugPrint('CHAT ERROR: $e');
+      debugPrint('$stack');
       _error = e.toString();
     } finally {
       _isLoading = false;

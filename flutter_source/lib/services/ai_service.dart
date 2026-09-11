@@ -20,4 +20,8 @@ abstract class AiService {
 
   /// Disconnects and cleans up any active realtime voice or streaming sessions.
   void disconnectRealtime();
+
+  /// Generates an image using the active AI provider.
+  /// Returns a displayable image URL or data URI.
+  Future<String> generateImage(String prompt);
 }

@@ -179,6 +179,7 @@ class VoiceService {
     required String text,
     required String characterId,
     required String language,
+    double speedMultiplier = 0.85,
   }) async {
     if (text.trim().isEmpty) return;
 
@@ -204,44 +205,49 @@ class VoiceService {
       await _flutterTts.setLanguage('en-US');
     }
 
-    // Character-specific distinct vocal acoustic profile
+    // Character-specific distinct vocal acoustic profile (natural, relaxed human cadence)
     double pitch = 1.0;
-    double rate = 0.50;
+    // Base rate is reduced from rushed 0.50+ down to a relaxed, natural 0.38-0.42 base
+    double baseRate = 0.40;
 
     switch (characterId.toLowerCase()) {
       case 'eve':
-        // Warm, friendly, clear female presence
-        pitch = 1.08;
-        rate = 0.49;
+        // Warm, friendly, melodic and clear female presence
+        pitch = 1.06;
+        baseRate = 0.39;
         break;
       case 'ara':
-        // Reflective, thoughtful, slightly melodic female
-        pitch = 1.16;
-        rate = 0.46;
+        // Reflective, poetic, thoughtful female pacing
+        pitch = 1.12;
+        baseRate = 0.37;
         break;
       case 'leo':
-        // Confident, sharp, masculine tone
-        pitch = 0.86;
-        rate = 0.52;
+        // Confident, articulated, sharp masculine cadence
+        pitch = 0.88;
+        baseRate = 0.42;
         break;
       case 'rex':
-        // Energetic, punchy, bold masculine tone
-        pitch = 0.92;
-        rate = 0.56;
+        // Bold, energetic, spirited masculine cadence
+        pitch = 0.94;
+        baseRate = 0.44;
         break;
       case 'sal':
-        // Calm, grounded, contemplative tone
+        // Calm, unhurried, grounded masculine warmth
         pitch = 0.82;
-        rate = 0.45;
+        baseRate = 0.36;
         break;
       default:
         pitch = 1.0;
-        rate = 0.50;
+        baseRate = 0.40;
     }
+
+    // Multiply by user's speed setting from Settings (default 0.85x - 1.0x)
+    // Clamp to safe TTS engine bounds
+    final finalRate = (baseRate * (speedMultiplier / 0.85)).clamp(0.20, 0.90);
 
     try {
       await _flutterTts.setPitch(pitch);
-      await _flutterTts.setSpeechRate(rate);
+      await _flutterTts.setSpeechRate(finalRate);
       await _flutterTts.setVolume(1.0);
       _isSpeaking = true;
       onSpeakingStateChanged?.call(true);

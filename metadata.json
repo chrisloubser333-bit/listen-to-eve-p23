@@ -1,0 +1,6 @@
+{
+  "name": "Listen to Eve",
+  "description": "Listen to Eve – Cross-platform Grok voice assistant with English/Afrikaans support, voice input/output and custom voices.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

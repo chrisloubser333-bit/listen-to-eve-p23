@@ -360,25 +360,25 @@ class MemoryService extends ChangeNotifier {
       'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
       'would', 'should', 'could', 'ought', 'can', 'will', 'shall', 'may', 'might', 'must',
       // English question words & adverbs
-      'what', 'who', 'whom', 'how', 'when', 'where', 'why',
+      'what', 'which', 'who', 'whom', 'how', 'when', 'where', 'why',
       // English greetings & conversational filler
       'hello', 'hi', 'hey', 'good', 'morning', 'afternoon', 'evening', 'night', 'day', 'today',
       'thanks', 'thank', 'please', 'okay', 'yes', 'no', 'just', 'so', 'too', 'very',
       // Character names (prevent character name query match)
       'eve', 'ara', 'leo', 'rex', 'sal',
       // Afrikaans articles, prepositions, conjunctions
-      'die', 'wat', 'op', '\'n', 'en', 'na',
-      'vir', 'van', 'met', 'oor', 'deur', 'dat', 'hierdie', 'dit', 'daardie',
+      'die', 'at', 'by', 'wat', 'op', '\'n', 'en', 'of', 'in', 'na',
+      'vir', 'van', 'met', 'oor', 'as', 'deur', 'dat', 'hierdie', 'dit', 'daardie',
       // Afrikaans pronouns
-      'ek', 'myne', 'ons', 'onsne', 'onslewe',
+      'ek', 'my', 'myne', 'myself', 'ons', 'onsne', 'onslewe',
       'jy', 'jou', 'joune', 'jouself', 'julle',
       'hy', 'hom', 'sy', 'syne', 'synde', 'haar', 'hare',
       'hulle', 'hul', 'hulse',
       // Afrikaans verbs & modals
-      'wees', 'word', 'gewees', 'het', 'kon',
-      'sou', 'moet', 'moes', 'mag', 'gaan',
+      'is', 'was', 'wees', 'word', 'gewees', 'het', 'he', 'kan', 'kon',
+      'sal', 'sou', 'moet', 'moes', 'mag', 'gaan',
       // Afrikaans question words & adverbs
-      'wie', 'waar', 'wanneer', 'hoekom', 'waarom', 'hoe',
+      'wat', 'wie', 'waar', 'wanneer', 'hoekom', 'waarom', 'hoe',
       // Afrikaans greetings & filler
       'hallo', 'haai', 'goeie', 'more', 'môre', 'middag', 'aand', 'dag', 'vandag',
       'dankie', 'asseblief', 'goed', 'regso', 'ja', 'nee', 'nie', 'net', 'baie', 'ook', 'maar',

@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+::selection {
+  background: rgba(0, 240, 255, 0.35);
+  color: #ffffff;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+

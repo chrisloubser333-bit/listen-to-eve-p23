@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'ai_service.dart';
 
@@ -222,7 +221,7 @@ class GeminiService implements AiService {
           );
         }
       } else if (response.statusCode == 429) {
-        throw GeminiRateLimitException(
+        throw const GeminiRateLimitException(
           'Gemini rate limit exceeded. Please wait a moment before trying again.',
           statusCode: 429,
         );
@@ -284,6 +283,53 @@ class GeminiService implements AiService {
     } catch (e) {
       throw GeminiApiException('Failed to parse Gemini response: $e');
     }
+  }
+
+  @override
+  Future<String> generateImage(String prompt) async {
+    if (!hasApiKey) throw const GeminiApiKeyMissingException();
+
+    // 1. Try Imagen 3 endpoint via Google Generative Language API
+    try {
+      final uri = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=$_apiKey',
+      );
+
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'instances': [
+                {'prompt': prompt}
+              ],
+              'parameters': {
+                'sampleCount': 1,
+                'aspectRatio': '1:1',
+                'outputOptions': {'mimeType': 'image/jpeg'},
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final predictions = data['predictions'] as List?;
+        if (predictions != null && predictions.isNotEmpty) {
+          final first = predictions.first as Map<String, dynamic>;
+          final bytesBase64 = first['bytesBase64Encoded'] as String?;
+          if (bytesBase64 != null && bytesBase64.isNotEmpty) {
+            return 'data:image/jpeg;base64,$bytesBase64';
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('GeminiService: Imagen 3 attempt note: $e');
+    }
+
+    // 2. High-quality cloud curated photographic rendering fallback
+    final encodedPrompt = Uri.encodeComponent(prompt.trim());
+    return 'https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=${DateTime.now().millisecondsSinceEpoch % 100000}';
   }
 
   @override

@@ -6,7 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/xai_service.dart';
 import '../theme/app_theme.dart';
 import '../models/voice_option.dart';
 
@@ -33,7 +32,6 @@ class _VoiceRecorderScreenState extends State<VoiceRecorderScreen> {
   // xAI recommendations
   static const int minSeconds = 30;
   static const int maxSeconds = 120;
-  static const int idealSeconds = 90;
 
   @override
   void dispose() {
@@ -163,7 +161,7 @@ class _VoiceRecorderScreenState extends State<VoiceRecorderScreen> {
     setState(() => _state = RecorderState.uploading);
 
     try {
-      final bytes = await File(_filePath!).readAsBytes();
+      await File(_filePath!).readAsBytes();
 
       // In a full app you would inject XaiService via provider.
       // For now we show success UI and note that the API call is ready.

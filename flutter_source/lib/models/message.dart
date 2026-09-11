@@ -7,6 +7,10 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isVoice;
   final String? audioPath; // local path if voice message was recorded/played
+  final String? imageUrl; // url or asset path or base64 data for generated/uploaded images
+  final String? imagePrompt; // original prompt that generated the image
+
+  bool get isImage => imageUrl != null && imageUrl!.isNotEmpty;
 
   ChatMessage({
     required this.id,
@@ -15,6 +19,8 @@ class ChatMessage {
     required this.timestamp,
     this.isVoice = false,
     this.audioPath,
+    this.imageUrl,
+    this.imagePrompt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,6 +30,8 @@ class ChatMessage {
         'timestamp': timestamp.toIso8601String(),
         'isVoice': isVoice,
         'audioPath': audioPath,
+        'imageUrl': imageUrl,
+        'imagePrompt': imagePrompt,
       };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -37,6 +45,8 @@ class ChatMessage {
       timestamp: DateTime.parse(json['timestamp'] as String),
       isVoice: json['isVoice'] as bool? ?? false,
       audioPath: json['audioPath'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      imagePrompt: json['imagePrompt'] as String?,
     );
   }
 }
