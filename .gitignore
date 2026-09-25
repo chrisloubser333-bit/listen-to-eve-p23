@@ -1,8 +1,49 @@
-node_modules/
+# Flutter / Dart generated
+.dart_tool/
+.packages
+.pub/
 build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec_overrides.yaml
+
+# Android generated
+android/.gradle/
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+*.apk
+*.aab
+
+# Android signing credentials
+*.jks
+*.keystore
+key.properties
+
+# iOS generated
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Secrets / environment
+.env
+.env.*
 !.env.example
+*.pem
+*.p12
+*.pfx
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs / temporary files
+*.log
+*.tmp
+*.bak
+*~
