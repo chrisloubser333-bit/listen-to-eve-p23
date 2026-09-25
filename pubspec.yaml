@@ -1,5 +1,5 @@
 name: listen_to_eve
-description: Listen to Eve – Cross-platform Grok voice assistant with English/Afrikaans support, voice input/output and custom voices.
+description: Listen to Eve – mobile AI companion with characters, memory, voice, tools, and image generation.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -30,6 +30,7 @@ dependencies:
 
   # Storage
   shared_preferences: ^2.3.2
+
   # Utils
   intl: ^0.19.0
   uuid: ^4.5.1
