@@ -1,78 +1,81 @@
 # Listen to Eve
 
-Cross-platform Flutter app that lets you talk to Grok (xAI) in **English** or **Afrikaans**, with full voice input + voice replies and the ability to select default voices or teach/clone a custom voice.
+Listen to Eve is a Flutter mobile AI companion focused on natural conversation, distinct characters, persistent memory, voice interaction, image generation, and provider-independent intelligence.
 
-**App name: Listen to Eve**
+The current characters are Eve, Ara, Leo, Rex, and Sal. Each character can have its own identity, voice, conversation context, and memory.
 
-## Features
+## Current architecture
 
-- Real-time voice conversations powered by xAI Grok Voice API
-- Text chat fallback
-- Language switching (English / Afrikaans)
-- Default Grok voices (Eve, Ara, Leo, Rex, Sal + others)
-- Custom voice cloning (record a sample and create a new voice)
-- Clean, modern UI with dark mode support
-- Chat history persisted locally
+- Flutter mobile application for Android and iOS
+- Provider abstraction with Gemini and xAI implementations
+- Switchable AI provider architecture
+- Persistent local conversation and memory services
+- Intelligence orchestration with tool support
+- Weather and web-search tools through backend/proxy transports
+- Image generation through a backend image proxy
+- Speech input, text-to-speech, neural voice generation, and local voice caching
+- Character-specific profiles and selectable voices
+- Local image persistence and image viewing/sharing UI
+- English and Afrikaans conversation support
 
-## Requirements
+## Project structure
 
-- Flutter 3.22+ / Dart 3.2+
-- xAI API key from https://console.x.ai
-- Android Studio / VS Code + Flutter extension
-- For iOS: Xcode + CocoaPods
-
-## Setup
-
-1. Create a new Flutter project (or clone this folder structure):
-   ```bash
-   flutter create listen_with_eve
-   cd listen_with_eve
-   ```
-
-2. Replace the generated files with the ones in this repository (especially `lib/` and `pubspec.yaml`).
-
-3. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-4. Add your xAI API key:
-   - Open `lib/services/xai_service.dart`
-   - Or better: use a `.env` file / secure storage (recommended for production)
-   - For quick testing you can temporarily hard-code it (never commit real keys)
-
-5. Run:
-   ```bash
-   flutter run
-   ```
-
-## Important Notes
-
-- **Custom Voices** are currently limited geographically (mainly United States). The app includes the UI and API calls; if your region is restricted the feature will show an appropriate message.
-- **Afrikaans** support uses language hints + system instructions. Quality is good but not yet at the same level as English.
-- For production you should:
-  - Use **ephemeral tokens** (never put the long-lived API key in the mobile app)
-  - Add a small backend that issues short-lived client secrets
-  - Handle microphone permissions carefully
-
-## Project Structure
-
-```
+```text
+android/             Android application and Gradle configuration
+ios/                 iOS application configuration
+assets/              Character and avatar artwork
 lib/
-  main.dart                 # Entry point
-  models/                   # Data models
-  providers/                # State management
-  screens/                  # UI screens
-  services/                 # xAI API, audio, storage
-  widgets/                  # Reusable widgets
+  models/            Domain and conversation models
+  providers/         Application state and chat/settings providers
+  screens/           Main application screens
+  services/          AI, memory, voice, storage, tools, and transports
+  theme/             Application theme
+  widgets/           Reusable UI components
+test/                Flutter tests
+pubspec.yaml         Flutter package configuration
 ```
 
-## Next Steps After First Run
+## Development setup
 
-1. Test text chat
-2. Grant microphone permission and test voice
-3. Try switching language
-4. Explore voice selection in Settings
-5. (Optional) Record a custom voice sample
+Requirements:
 
-Enjoy talking to Grok!
+- Flutter stable
+- Dart supplied by Flutter
+- Android SDK for Android builds
+- Xcode and CocoaPods for iOS builds
+
+Install dependencies and verify the project:
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+```
+
+Build an Android release APK with:
+
+```bash
+flutter build apk --release
+```
+
+## Configuration
+
+Do not commit API keys, signing credentials, `.env` files, or machine-specific configuration.
+
+The application can obtain backend endpoints from saved settings or Dart environment values such as:
+
+- `SERVER_BASE_URL`
+- `SEARCH_PROXY_ENDPOINT`
+- `IMAGE_PROXY_ENDPOINT`
+
+Provider credentials are managed separately by the application. Production deployments should keep long-lived provider credentials on trusted backend infrastructure wherever possible rather than embedding them in the mobile application.
+
+## Repository workflow
+
+`main` is the stable source of truth. Substantial work should be performed on a dedicated feature or fix branch, verified with analysis/tests/builds as appropriate, reviewed, and then merged into `main`.
+
+Generated Flutter output, local Android configuration, signing credentials, IDE files, logs, and temporary files are intentionally excluded by `.gitignore`.
+
+## Release note
+
+The current Android configuration is suitable for development builds. Before public/store release, configure a permanent application ID/package namespace and production signing credentials.
