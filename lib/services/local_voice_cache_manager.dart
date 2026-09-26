@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Top-level helper executed in a background Isolate to sanitize text and compute SHA-256.
 Map<String, String> _isolateSanitizeAndHash(Map<String, dynamic> params) {
   final rawText = params['text'] as String? ?? '';
   final characterId = params['characterId'] as String? ?? 'eve';
@@ -17,7 +15,6 @@ Map<String, String> _isolateSanitizeAndHash(Map<String, dynamic> params) {
   final neuralVoiceId = params['neuralVoiceId'] as String? ?? '';
   final voiceEngineVersion = params['voiceEngineVersion'] as String? ?? 'legacy';
 
-  // 1. Strip markdown, emojis, asterisks, hashtags, bracket meta-tokens, and collapse whitespace
   final cleanText = rawText
       .replaceAll(RegExp(r'\*+'), '')
       .replaceAll(RegExp(r'#+'), '')
@@ -26,10 +23,7 @@ Map<String, String> _isolateSanitizeAndHash(Map<String, dynamic> params) {
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 
-  // 2. Build deterministic canonical signature string
   final signature = 'text=$cleanText|char=$characterId|lang=$language|speed=${speedMultiplier.toStringAsFixed(3)}|pitch=${pitch.toStringAsFixed(3)}|rate=${baseRate.toStringAsFixed(3)}|neural=$neuralVoiceId|engine=$voiceEngineVersion';
-
-  // 3. Compute SHA-256
   final bytes = utf8.encode(signature);
   final digest = sha256.convert(bytes);
 
@@ -39,24 +33,15 @@ Map<String, String> _isolateSanitizeAndHash(Map<String, dynamic> params) {
   };
 }
 
-/// Production-hardened disk-backed caching layer for synthesized and streamed voices.
-///
-/// Features:
-/// - Computes deterministic SHA-256 key matching text, character profile, and acoustic settings.
-/// - Offloads string sanitization and cryptographic hashing to background Dart isolates (`Isolate.run`).
-/// - Stores audio files on disk in the application document cache to eliminate redundant network roundtrips.
-/// - Thread-safe with automatic cache size pruning.
 class LocalVoiceCacheManager {
   static final LocalVoiceCacheManager _instance = LocalVoiceCacheManager._internal();
   static LocalVoiceCacheManager get instance => _instance;
 
   Directory? _cacheDir;
-  bool _isInitializing = false;
-  static const int _maxCacheSizeBytes = 100 * 1024 * 1024; // 100 MB max audio cache
+  static const int _maxCacheSizeBytes = 100 * 1024 * 1024;
 
   LocalVoiceCacheManager._internal();
 
-  /// Resolves or initializes the private local directory used for voice audio caching.
   Future<Directory> getStorageDirectory() async {
     if (_cacheDir != null && await _cacheDir!.exists()) {
       return _cacheDir!;
@@ -81,7 +66,6 @@ class LocalVoiceCacheManager {
     return _cacheDir!;
   }
 
-  /// Sanitizes text and computes a deterministic SHA-256 cache key in a background isolate.
   Future<Map<String, String>> sanitizeAndComputeKey({
     required String text,
     required String characterId,
@@ -106,12 +90,10 @@ class LocalVoiceCacheManager {
     try {
       return await Isolate.run(() => _isolateSanitizeAndHash(params));
     } catch (_) {
-      // Fallback in case Isolate.run is unavailable
       return _isolateSanitizeAndHash(params);
     }
   }
 
-  /// Checks if a cached audio file exists for the given SHA-256 hash key.
   Future<File?> getCachedAudioFile(String hashKey, {String extension = 'mp3'}) async {
     if (kIsWeb || hashKey.isEmpty) return null;
     try {
@@ -126,7 +108,6 @@ class LocalVoiceCacheManager {
     return null;
   }
 
-  /// Persists synthesized/streamed audio binary bytes to disk.
   Future<File?> saveAudioBytes(
     String hashKey,
     Uint8List bytes, {
@@ -137,10 +118,7 @@ class LocalVoiceCacheManager {
       final dir = await getStorageDirectory();
       final file = File('${dir.path}/$hashKey.$extension');
       await file.writeAsBytes(bytes, flush: true);
-
-      // Async background pruning if cache exceeds threshold
       _pruneCacheIfNeeded();
-
       return file;
     } catch (e) {
       debugPrint('[LocalVoiceCacheManager] Save audio error: $e');
@@ -148,7 +126,6 @@ class LocalVoiceCacheManager {
     }
   }
 
-  /// Background pruning to keep disk cache bounded within limits.
   void _pruneCacheIfNeeded() {
     if (kIsWeb) return;
     Future.microtask(() async {
@@ -170,7 +147,6 @@ class LocalVoiceCacheManager {
         }
 
         if (totalBytes > _maxCacheSizeBytes) {
-          // Sort oldest first
           fileStats.sort((a, b) => (a['modified'] as DateTime).compareTo(b['modified'] as DateTime));
           int bytesToRemove = totalBytes - (_maxCacheSizeBytes ~/ 2);
           for (final item in fileStats) {
@@ -188,7 +164,6 @@ class LocalVoiceCacheManager {
     });
   }
 
-  /// Clears all cached audio files.
   Future<void> clearCache() async {
     if (kIsWeb) return;
     try {
