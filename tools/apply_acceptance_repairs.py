@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import base64
 ROOT=Path(__file__).resolve().parent.parent
 
 def need(t, old, label):
@@ -85,4 +84,11 @@ t=t.replace('const TextStyle(', 'TextStyle(')
 t=t.replace('const Icon(Icons.more_horiz_rounded,\n                color: Theme.of(context).colorScheme.onSurfaceVariant)', 'Icon(Icons.more_horiz_rounded,\n                color: Theme.of(context).colorScheme.onSurfaceVariant)')
 p.write_text(t)
 
-print('Acceptance repairs applied successfully. Launcher artwork is installed separately by the build step.')
+# Chat composer text must remain readable in both light and dark themes.
+p=ROOT/'lib/screens/chat_screen.dart'; t=p.read_text()
+old="style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),"; need(t,old,'chat input text style')
+new="style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),"
+t=t.replace(old,new,1)
+p.write_text(t)
+
+print('Acceptance repairs applied successfully: character chat isolation, memory theming, and adaptive composer text.')
