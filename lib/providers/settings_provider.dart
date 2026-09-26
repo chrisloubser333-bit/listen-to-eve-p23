@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/ai_provider_type.dart';
 import '../models/character_profile.dart';
-import '../models/voice_option.dart';
 import '../services/intelligence_orchestrator.dart';
 import '../services/storage_service.dart';
 import '../services/switchable_ai_service.dart';
@@ -13,7 +12,6 @@ class SettingsProvider extends ChangeNotifier {
   final IntelligenceOrchestrator? _orchestrator;
 
   String _language = 'en'; // 'en' or 'af'
-  String _voiceId = 'eve';
   String _characterId = 'eve';
   bool _darkMode = true;
   double _silencePauseSeconds = 1.8;
@@ -23,7 +21,6 @@ class SettingsProvider extends ChangeNotifier {
   String? _searchProxyEndpoint;
   String? _imageProxyEndpoint;
   String? _serverBaseUrl;
-  List<VoiceOption> _customVoices = [];
 
   SettingsProvider(
     this._storage, [
@@ -34,7 +31,6 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   String get language => _language;
-  String get voiceId => _voiceId;
   String get characterId => _characterId;
   bool get darkMode => _darkMode;
   double get silencePauseSeconds => _silencePauseSeconds;
@@ -46,26 +42,12 @@ class SettingsProvider extends ChangeNotifier {
   String? get serverBaseUrl => _serverBaseUrl;
   AiProviderType get activeAiProviderType =>
       AiProviderType.fromString(_aiProvider);
-  List<VoiceOption> get customVoices => _customVoices;
 
   CharacterProfile get activeCharacter =>
       CharacterRegistry.getById(_characterId);
 
-  List<VoiceOption> get allVoices => [
-        ...VoiceOption.defaults,
-        ..._customVoices,
-      ];
-
-  VoiceOption get selectedVoice {
-    return allVoices.firstWhere(
-      (v) => v.id == _voiceId,
-      orElse: () => VoiceOption.defaults.first,
-    );
-  }
-
   Future<void> _load() async {
     _language = await _storage.getLanguage();
-    _voiceId = await _storage.getVoiceId();
     _characterId = await _storage.getCharacterId();
     _darkMode = await _storage.getDarkMode();
     _silencePauseSeconds = await _storage.getSilencePauseSeconds();
@@ -77,9 +59,13 @@ class SettingsProvider extends ChangeNotifier {
     _imageProxyEndpoint = await _storage.getImageProxyEndpoint();
     _switchableAiService?.setActiveProvider(activeAiProviderType);
     _switchableAiService?.imageProxyTransport?.setServerBaseUrl(_serverBaseUrl);
-    _switchableAiService?.imageProxyTransport?.setProxyEndpoint(_imageProxyEndpoint);
-    _switchableAiService?.imageProxyTransport?.setFallbackServerUrl(_serverBaseUrl ?? _searchProxyEndpoint);
-    _orchestrator?.getTool<WebSearchTool>()?.updateProxyEndpoint(_searchProxyEndpoint ?? _serverBaseUrl);
+    _switchableAiService?.imageProxyTransport
+        ?.setProxyEndpoint(_imageProxyEndpoint);
+    _switchableAiService?.imageProxyTransport
+        ?.setFallbackServerUrl(_serverBaseUrl ?? _searchProxyEndpoint);
+    _orchestrator
+        ?.getTool<WebSearchTool>()
+        ?.updateProxyEndpoint(_searchProxyEndpoint ?? _serverBaseUrl);
     notifyListeners();
   }
 
@@ -87,23 +73,30 @@ class SettingsProvider extends ChangeNotifier {
     _serverBaseUrl = url.trim().isEmpty ? null : url.trim();
     await _storage.saveServerBaseUrl(url);
     _switchableAiService?.imageProxyTransport?.setServerBaseUrl(_serverBaseUrl);
-    _switchableAiService?.imageProxyTransport?.setFallbackServerUrl(_serverBaseUrl ?? _searchProxyEndpoint);
-    _orchestrator?.getTool<WebSearchTool>()?.updateProxyEndpoint(_searchProxyEndpoint ?? _serverBaseUrl);
+    _switchableAiService?.imageProxyTransport
+        ?.setFallbackServerUrl(_serverBaseUrl ?? _searchProxyEndpoint);
+    _orchestrator
+        ?.getTool<WebSearchTool>()
+        ?.updateProxyEndpoint(_searchProxyEndpoint ?? _serverBaseUrl);
     notifyListeners();
   }
 
   Future<void> setSearchProxyEndpoint(String endpoint) async {
     _searchProxyEndpoint = endpoint.trim().isEmpty ? null : endpoint.trim();
     await _storage.saveSearchProxyEndpoint(endpoint);
-    _orchestrator?.getTool<WebSearchTool>()?.updateProxyEndpoint(_searchProxyEndpoint);
-    _switchableAiService?.imageProxyTransport?.setFallbackServerUrl(_searchProxyEndpoint);
+    _orchestrator
+        ?.getTool<WebSearchTool>()
+        ?.updateProxyEndpoint(_searchProxyEndpoint);
+    _switchableAiService?.imageProxyTransport
+        ?.setFallbackServerUrl(_searchProxyEndpoint);
     notifyListeners();
   }
 
   Future<void> setImageProxyEndpoint(String endpoint) async {
     _imageProxyEndpoint = endpoint.trim().isEmpty ? null : endpoint.trim();
     await _storage.saveImageProxyEndpoint(endpoint);
-    _switchableAiService?.imageProxyTransport?.setProxyEndpoint(_imageProxyEndpoint);
+    _switchableAiService?.imageProxyTransport
+        ?.setProxyEndpoint(_imageProxyEndpoint);
     notifyListeners();
   }
 
@@ -120,20 +113,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCharacterId(String id, {bool syncVoice = true}) async {
+  Future<void> setCharacterId(String id) async {
     _characterId = id;
     await _storage.saveCharacterId(id);
-    if (syncVoice) {
-      final character = CharacterRegistry.getById(id);
-      await setVoiceId(character.defaultVoiceId);
-    } else {
-      notifyListeners();
-    }
-  }
-
-  Future<void> setVoiceId(String id) async {
-    _voiceId = id;
-    await _storage.saveVoiceId(id);
     notifyListeners();
   }
 
@@ -161,14 +143,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addCustomVoice(VoiceOption voice) {
-    _customVoices = [..._customVoices, voice];
-    notifyListeners();
+  Future<void> setActiveCharacter(CharacterProfile character) async {
+    await setCharacterId(character.id);
   }
 
-  
-  Future<void> setActiveCharacter(CharacterProfile character, {bool syncVoice = true}) async {
-    await setCharacterId(character.id, syncVoice: syncVoice);
-  }
-String get systemPrompt => activeCharacter.getSystemPrompt(_language);
+  String get systemPrompt => activeCharacter.getSystemPrompt(_language);
 }

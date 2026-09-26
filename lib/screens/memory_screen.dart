@@ -116,11 +116,6 @@ class _MemoryScreenState extends State<MemoryScreen> {
                         ),
                         _profileLine(
                           isAf
-                              ? 'Aktiewe stem: ${settings.voiceId.toUpperCase()}'
-                              : 'Active voice: ${settings.voiceId.toUpperCase()}',
-                        ),
-                        _profileLine(
-                          isAf
                               ? '${memoryService.memories.length} herinneringe gestoor'
                               : '${memoryService.memories.length} memories stored',
                         ),

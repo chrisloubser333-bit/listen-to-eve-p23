@@ -19,7 +19,6 @@ class StorageService {
   static const _keySessionTokenExpiry = 'auth_session_token_expiry';
   static const _keyAuthGatewayEndpoint = 'auth_gateway_endpoint';
   static const _keyLanguage = 'preferred_language';
-  static const _keyVoiceId = 'selected_voice_id';
   static const _keySpeechSpeed = 'speech_speed_multiplier';
   static const _keyCharacterId = 'selected_character_id';
   static const _keyDarkMode = 'dark_mode';
@@ -230,15 +229,6 @@ class StorageService {
 
   Future<double> getSpeechSpeed() async {
     return _prefs.getDouble(_keySpeechSpeed) ?? 0.85;
-  }
-
-  // Voice
-  Future<void> saveVoiceId(String voiceId) async {
-    await _prefs.setString(_keyVoiceId, voiceId);
-  }
-
-  Future<String> getVoiceId() async {
-    return _prefs.getString(_keyVoiceId) ?? 'eve';
   }
 
   // Character / Persona
