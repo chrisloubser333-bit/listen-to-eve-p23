@@ -7,7 +7,8 @@
     <application
         android:label="Listen to Eve"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher_lte"
+        android:roundIcon="@drawable/ic_launcher_lte"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
