@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:gal/gal.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Interactive high-resolution viewer for avatars and AI-generated artwork.
@@ -63,61 +67,92 @@ class ExplodedImageModal extends StatelessWidget {
     );
   }
 
-  void _handleSave(BuildContext context) {
-    // Copy link or notify saved safely without requiring intrusive native file permissions
-    Clipboard.setData(ClipboardData(
-      text: imageUrl ?? assetPath ?? title,
-    ));
+  Future<Uint8List> _resolveImageBytes() async {
+    if (assetPath != null && assetPath!.isNotEmpty) {
+      final data = await rootBundle.load(assetPath!);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                isAvatar
-                    ? 'Saved $title\'s portrait to your device album!'
-                    : 'Saved high-res image to your gallery & clipboard!',
-                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppTheme.surfaceLight,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    final source = imageUrl?.trim() ?? '';
+    if (source.startsWith('data:image')) {
+      final comma = source.indexOf(',');
+      if (comma < 0) throw Exception('Invalid image data');
+      return base64Decode(source.substring(comma + 1));
+    }
+
+    if (source.startsWith('/') || source.startsWith('file://')) {
+      final path = source.startsWith('file://') ? source.substring(7) : source;
+      return File(path).readAsBytes();
+    }
+
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+      final response = await http
+          .get(Uri.parse(source))
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          response.bodyBytes.isEmpty) {
+        throw Exception('Image download failed (${response.statusCode})');
+      }
+      return response.bodyBytes;
+    }
+
+    throw Exception('No image data is available');
   }
 
-  void _handleShare(BuildContext context) {
-    Clipboard.setData(ClipboardData(
-      text: 'Listen to Eve — $title: ${imageUrl ?? assetPath ?? ""}',
-    ));
+  String _safeFileName() {
+    final cleaned = title.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
+    return '${cleaned.isEmpty ? 'listen_to_eve_image' : cleaned}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.share_rounded, color: AppTheme.primary, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Sharing link copied to clipboard for $title!',
-                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-              ),
-            ),
-          ],
+  Future<void> _handleSave(BuildContext context) async {
+    try {
+      final bytes = await _resolveImageBytes();
+      await Gal.putImageBytes(bytes, name: _safeFileName());
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAvatar
+              ? "$title's portrait was saved to your gallery."
+              : 'Image saved to your gallery.'),
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: AppTheme.surfaceLight,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Could not save image: $e'),
+            behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _handleShare(BuildContext context) async {
+    try {
+      final bytes = await _resolveImageBytes();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/${_safeFileName()}');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!context.mounted) return;
+
+      final box = context.findRenderObject() as RenderBox?;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'image/jpeg')],
+          text: 'Listen to Eve — $title',
+          sharePositionOrigin:
+              box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Could not share image: $e'),
+            behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
   Widget _buildImageContent() {
@@ -136,7 +171,8 @@ class ExplodedImageModal extends StatelessWidget {
     if (imageUrl != null && imageUrl!.startsWith('data:image')) {
       try {
         final commaIdx = imageUrl!.indexOf(',');
-        final base64Str = commaIdx != -1 ? imageUrl!.substring(commaIdx + 1) : imageUrl!;
+        final base64Str =
+            commaIdx != -1 ? imageUrl!.substring(commaIdx + 1) : imageUrl!;
         final bytes = base64Decode(base64Str);
         return Image.memory(
           bytes,
@@ -148,11 +184,13 @@ class ExplodedImageModal extends StatelessWidget {
           ),
         );
       } catch (_) {
-        return const Icon(Icons.broken_image_rounded, size: 80, color: Colors.grey);
+        return const Icon(Icons.broken_image_rounded,
+            size: 80, color: Colors.grey);
       }
     }
 
-    if (imageUrl != null && (imageUrl!.startsWith('/') || imageUrl!.startsWith('file://'))) {
+    if (imageUrl != null &&
+        (imageUrl!.startsWith('/') || imageUrl!.startsWith('file://'))) {
       try {
         final cleanPath = imageUrl!.startsWith('file://')
             ? imageUrl!.replaceFirst('file://', '')
@@ -176,7 +214,8 @@ class ExplodedImageModal extends StatelessWidget {
           );
         }
       } catch (_) {
-        return const Icon(Icons.broken_image_rounded, size: 80, color: Colors.grey);
+        return const Icon(Icons.broken_image_rounded,
+            size: 80, color: Colors.grey);
       }
     }
 
@@ -189,7 +228,8 @@ class ExplodedImageModal extends StatelessWidget {
           return Center(
             child: CircularProgressIndicator(
               value: progress.expectedTotalBytes != null
-                  ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                  ? progress.cumulativeBytesLoaded /
+                      progress.expectedTotalBytes!
                   : null,
               color: accentColor,
             ),
@@ -222,15 +262,18 @@ class ExplodedImageModal extends StatelessWidget {
                 scaleEnabled: true,
                 child: Center(
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 500, maxHeight: 560),
-                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+                    constraints:
+                        const BoxConstraints(maxWidth: 500, maxHeight: 560),
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 60),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: accentColor.withOpacity(0.6),
                         width: 2.0,
                       ),
-                      boxShadow: AppTheme.glow(accentColor, blur: 30, spread: 2),
+                      boxShadow:
+                          AppTheme.glow(accentColor, blur: 30, spread: 2),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _buildImageContent(),
@@ -248,7 +291,8 @@ class ExplodedImageModal extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                    icon: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 28),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.black.withOpacity(0.6),
                       padding: const EdgeInsets.all(8),
@@ -296,7 +340,8 @@ class ExplodedImageModal extends StatelessWidget {
               right: 20,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppTheme.surface.withOpacity(0.92),
                     borderRadius: BorderRadius.circular(28),
@@ -317,7 +362,7 @@ class ExplodedImageModal extends StatelessWidget {
                     children: [
                       // Download / Save Button
                       ElevatedButton.icon(
-                        onPressed: () => _handleSave(context),
+                        onPressed: () async => _handleSave(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accentColor,
                           foregroundColor: AppTheme.background,
@@ -325,31 +370,36 @@ class ExplodedImageModal extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 12),
                         ),
                         icon: const Icon(Icons.download_rounded, size: 20),
                         label: Text(
                           isAvatar ? 'Save Portrait' : 'Save Image',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ),
                       const SizedBox(width: 12),
 
                       // Share Button
                       OutlinedButton.icon(
-                        onPressed: () => _handleShare(context),
+                        onPressed: () async => _handleShare(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: BorderSide(color: accentColor.withOpacity(0.7), width: 1.2),
+                          side: BorderSide(
+                              color: accentColor.withOpacity(0.7), width: 1.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                         ),
                         icon: const Icon(Icons.share_rounded, size: 18),
                         label: const Text(
                           'Share',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ),
                     ],

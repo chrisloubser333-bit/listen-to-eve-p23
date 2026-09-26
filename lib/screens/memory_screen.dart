@@ -54,10 +54,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
     final filtered = _filter == 'all'
         ? memoryService.memories
-        : memoryService.getMemoriesByCategory(MemoryCategory.fromString(_filter));
+        : memoryService
+            .getMemoriesByCategory(MemoryCategory.fromString(_filter));
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(isAf ? 'Geheue' : 'Memory'),
         actions: [
@@ -94,8 +95,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                             const SizedBox(width: 8),
                             Text(
                               isAf ? 'Oor jou' : 'About you',
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
                               ),
@@ -154,9 +155,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     children: [
                       _filterChip('all', isAf ? 'Alles' : 'All'),
                       _filterChip('semantic', isAf ? 'Semanties' : 'Semantic'),
-                      _filterChip('preference', isAf ? 'Voorkeure' : 'Preferences'),
+                      _filterChip(
+                          'preference', isAf ? 'Voorkeure' : 'Preferences'),
                       _filterChip('episodic', isAf ? 'Episodies' : 'Episodic'),
-                      _filterChip('relationship', isAf ? 'Verhouding' : 'Relationship'),
+                      _filterChip(
+                          'relationship', isAf ? 'Verhouding' : 'Relationship'),
                       _filterChip('skill', isAf ? 'Vaardighede' : 'Skills'),
                     ],
                   ),
@@ -173,14 +176,20 @@ class _MemoryScreenState extends State<MemoryScreen> {
                         Icon(
                           Icons.psychology_outlined,
                           size: 56,
-                          color: AppTheme.textSecondary.withOpacity(0.5),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withOpacity(0.5),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           isAf
                               ? 'Nog geen herinneringe in hierdie kategorie nie'
                               : 'No memories in this category yet',
-                          style: const TextStyle(color: AppTheme.textSecondary),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
@@ -189,7 +198,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                             foregroundColor: AppTheme.primary,
                             side: const BorderSide(color: AppTheme.primary),
                           ),
-                          onPressed: () => _showAddMemory(context, memoryService, isAf),
+                          onPressed: () =>
+                              _showAddMemory(context, memoryService, isAf),
                           label: Text(
                             isAf ? 'Voeg herinnering by' : 'Add memory',
                           ),
@@ -213,10 +223,13 @@ class _MemoryScreenState extends State<MemoryScreen> {
                           color: Color(0xFFFF6B6B),
                         ),
                         title: Text(
-                          isAf ? 'Vee alle herinneringe uit' : 'Delete all memories',
-                          style: const TextStyle(color: Color(0xFFFF6B6B)),
+                          isAf
+                              ? 'Vee alle herinneringe uit'
+                              : 'Delete all memories',
+                          style: TextStyle(color: Color(0xFFFF6B6B)),
                         ),
-                        onTap: () => _confirmDeleteAll(context, memoryService, isAf),
+                        onTap: () =>
+                            _confirmDeleteAll(context, memoryService, isAf),
                       ),
                     ],
                   ),
@@ -231,8 +244,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         title,
-        style: const TextStyle(
-          color: AppTheme.textPrimary,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 15,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.3,
@@ -244,10 +257,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
   Widget _glassCard({required Widget child, Color? borderColor}) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.7),
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: borderColor ?? AppTheme.border.withOpacity(0.6),
+          color: borderColor ?? Theme.of(context).dividerColor.withOpacity(0.6),
         ),
       ),
       child: child,
@@ -271,7 +284,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14),
             ),
           ),
         ],
@@ -291,18 +306,20 @@ class _MemoryScreenState extends State<MemoryScreen> {
           decoration: BoxDecoration(
             color: selected
                 ? AppTheme.primary.withOpacity(0.18)
-                : AppTheme.surface.withOpacity(0.6),
+                : Theme.of(context).colorScheme.surface.withOpacity(0.6),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected
                   ? AppTheme.primary.withOpacity(0.7)
-                  : AppTheme.border.withOpacity(0.5),
+                  : Theme.of(context).dividerColor.withOpacity(0.5),
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? AppTheme.primary : AppTheme.textSecondary,
+              color: selected
+                  ? AppTheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               fontSize: 13,
             ),
@@ -336,8 +353,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
             m.content,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 14,
               height: 1.3,
             ),
@@ -354,8 +371,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
             ),
           ),
           trailing: IconButton(
-            icon: const Icon(Icons.more_horiz_rounded,
-                color: AppTheme.textSecondary),
+            icon: Icon(Icons.more_horiz_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             onPressed: () => _showMemoryActions(m, memoryService, isAf),
           ),
           onTap: () => _showMemoryActions(m, memoryService, isAf),
@@ -376,10 +393,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
     return isAf ? 'Pas nou' : 'Just now';
   }
 
-  void _showMemoryActions(MemoryItem m, MemoryService memoryService, bool isAf) {
+  void _showMemoryActions(
+      MemoryItem m, MemoryService memoryService, bool isAf) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -394,7 +412,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.border,
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -402,17 +420,18 @@ class _MemoryScreenState extends State<MemoryScreen> {
                 Text(
                   m.content,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.edit_rounded,
-                      color: AppTheme.primary),
+                  leading:
+                      const Icon(Icons.edit_rounded, color: AppTheme.primary),
                   title: Text(isAf ? 'Wysig' : 'Edit',
-                      style: const TextStyle(color: AppTheme.textPrimary)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _showEditMemory(m, memoryService, isAf);
@@ -422,7 +441,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                   leading: const Icon(Icons.delete_rounded,
                       color: Color(0xFFFF6B6B)),
                   title: Text(isAf ? 'Vee uit' : 'Delete',
-                      style: const TextStyle(color: Color(0xFFFF6B6B))),
+                      style: TextStyle(color: Color(0xFFFF6B6B))),
                   onTap: () async {
                     Navigator.pop(ctx);
                     await memoryService.deleteMemory(m.id);
@@ -436,7 +455,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
     );
   }
 
-  void _showAddMemory(BuildContext ctx, MemoryService memoryService, bool isAf) {
+  void _showAddMemory(
+      BuildContext ctx, MemoryService memoryService, bool isAf) {
     final controller = TextEditingController();
     final charName = ctx.read<SettingsProvider>().activeCharacter.name;
     MemoryCategory selectedCategory = MemoryCategory.semantic;
@@ -445,7 +465,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -465,8 +485,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                 children: [
                   Text(
                     isAf ? 'Voeg herinnering by' : 'Add memory',
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -475,19 +495,22 @@ class _MemoryScreenState extends State<MemoryScreen> {
                   TextField(
                     controller: controller,
                     maxLines: 3,
-                    style: const TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: isAf
                           ? 'Wat moet $charName onthou?'
                           : 'What should $charName remember?',
-                      hintStyle: const TextStyle(color: AppTheme.textSecondary),
+                      hintStyle: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     isAf ? 'Kategorie' : 'Category',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -508,7 +531,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                         labelStyle: TextStyle(
                           color: isSelected
                               ? _categoryColor(cat)
-                              : AppTheme.textSecondary,
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       );
                     }).toList(),
@@ -519,8 +542,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     children: [
                       Text(
                         isAf ? 'Belangrikheid' : 'Importance',
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -534,11 +557,18 @@ class _MemoryScreenState extends State<MemoryScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 2),
                             constraints: const BoxConstraints(),
                             icon: Icon(
-                              isFilled ? Icons.star_rounded : Icons.star_border_rounded,
-                              color: isFilled ? AppTheme.accent : AppTheme.textSecondary,
+                              isFilled
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: isFilled
+                                  ? AppTheme.accent
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                             ),
                             onPressed: () {
-                              setModalState(() => selectedImportance = starIndex);
+                              setModalState(
+                                  () => selectedImportance = starIndex);
                             },
                           );
                         }),
@@ -577,7 +607,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -597,8 +627,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                 children: [
                   Text(
                     isAf ? 'Wysig herinnering' : 'Edit memory',
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -607,19 +637,22 @@ class _MemoryScreenState extends State<MemoryScreen> {
                   TextField(
                     controller: controller,
                     maxLines: 3,
-                    style: const TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: isAf
                           ? 'Wat moet $charName onthou?'
                           : 'What should $charName remember?',
-                      hintStyle: const TextStyle(color: AppTheme.textSecondary),
+                      hintStyle: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     isAf ? 'Kategorie' : 'Category',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -640,7 +673,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
                         labelStyle: TextStyle(
                           color: isSelected
                               ? _categoryColor(cat)
-                              : AppTheme.textSecondary,
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       );
                     }).toList(),
@@ -651,8 +684,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
                     children: [
                       Text(
                         isAf ? 'Belangrikheid' : 'Importance',
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -666,11 +699,18 @@ class _MemoryScreenState extends State<MemoryScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 2),
                             constraints: const BoxConstraints(),
                             icon: Icon(
-                              isFilled ? Icons.star_rounded : Icons.star_border_rounded,
-                              color: isFilled ? AppTheme.accent : AppTheme.textSecondary,
+                              isFilled
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: isFilled
+                                  ? AppTheme.accent
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                             ),
                             onPressed: () {
-                              setModalState(() => selectedImportance = starIndex);
+                              setModalState(
+                                  () => selectedImportance = starIndex);
                             },
                           );
                         }),
@@ -710,16 +750,17 @@ class _MemoryScreenState extends State<MemoryScreen> {
     showDialog(
       context: ctx,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
           isAf ? 'Vee alles uit?' : 'Delete everything?',
-          style: const TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           isAf
               ? 'Alle herinneringe sal permanent verwyder word.'
               : 'All memories will be permanently removed.',
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style:
+              TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         actions: [
           TextButton(

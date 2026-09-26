@@ -50,6 +50,7 @@ class VoiceService {
   Function(String finalWords)? onSpeechCompleted;
   Function(bool isListening)? onListeningStateChanged;
   Function(bool isSpeaking)? onSpeakingStateChanged;
+  Function()? _pendingPlaybackStarted;
 
   VoiceService({String? serverStreamingGateway, String? serverBaseUrl}) {
     final effectiveUrl = serverBaseUrl ?? serverStreamingGateway;
@@ -84,7 +85,8 @@ class VoiceService {
   int get activeSpeechRequestId => _activeSpeechRequestId;
 
   void setServerBaseUrl(String? url) {
-    _serverStreamingGateway = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
+    _serverStreamingGateway =
+        (url != null && url.trim().isNotEmpty) ? url.trim() : null;
     _serverNeuralVoiceService.setServerBaseUrl(url);
   }
 
@@ -109,6 +111,7 @@ class VoiceService {
       _flutterTts.setStartHandler(() {
         _isSpeaking = true;
         onSpeakingStateChanged?.call(true);
+        _notifyPlaybackStarted();
       });
       _flutterTts.setCompletionHandler(() {
         _isSpeaking = false;
@@ -193,7 +196,8 @@ class VoiceService {
     }
   }
 
-  void _onSpeechResult(SpeechRecognitionResult result, double pauseDurationSeconds) {
+  void _onSpeechResult(
+      SpeechRecognitionResult result, double pauseDurationSeconds) {
     _currentWords = result.recognizedWords;
     onPartialText?.call(_currentWords);
 
@@ -252,10 +256,12 @@ class VoiceService {
     required String characterId,
     required String language,
     double speedMultiplier = 0.85,
+    Function()? onPlaybackStarted,
   }) async {
     if (text.trim().isEmpty) return;
 
     final currentRequestId = ++_activeSpeechRequestId;
+    _pendingPlaybackStarted = onPlaybackStarted;
 
     // Interrupt/stop any currently active playback/synthesis
     await _stopActiveEngines();
@@ -269,7 +275,8 @@ class VoiceService {
         ? 'google-cloud-tts-af-wavenet-v1'
         : 'gemini-3.1-flash-tts-preview-v1';
 
-    final sanitizeResult = await LocalVoiceCacheManager.instance.sanitizeAndComputeKey(
+    final sanitizeResult =
+        await LocalVoiceCacheManager.instance.sanitizeAndComputeKey(
       text: text,
       characterId: characterId,
       language: language,
@@ -289,9 +296,11 @@ class VoiceService {
 
     // Step 1: Check local neural voice cache
     if (!kIsWeb && hashKey.isNotEmpty) {
-      final cachedFile = await LocalVoiceCacheManager.instance.getCachedAudioFile(hashKey);
+      final cachedFile =
+          await LocalVoiceCacheManager.instance.getCachedAudioFile(hashKey);
       if (cachedFile != null && await cachedFile.exists()) {
-        debugPrint('[VoiceService] Cache hit for key $hashKey (${cachedFile.path}). Playing from disk.');
+        debugPrint(
+            '[VoiceService] Cache hit for key $hashKey (${cachedFile.path}). Playing from disk.');
         // Step 2: If cache hit -> play cached MP3 with JustAudio
         await _playCachedFile(cachedFile, currentRequestId);
         return;
@@ -311,22 +320,27 @@ class VoiceService {
         ),
       );
     } catch (e) {
-      debugPrint('[VoiceService] ServerNeuralVoiceGenerationService dispatch exception: $e');
+      debugPrint(
+          '[VoiceService] ServerNeuralVoiceGenerationService dispatch exception: $e');
     }
 
     // Stale check after async network call: guard against interruption/character switch
     if (_activeSpeechRequestId != currentRequestId) {
-      debugPrint('[VoiceService] Stale speech request $currentRequestId discarded after network response.');
+      debugPrint(
+          '[VoiceService] Stale speech request $currentRequestId discarded after network response.');
       return;
     }
 
-    if (neuralAudio != null && neuralAudio.bytes != null && neuralAudio.bytes!.isNotEmpty) {
+    if (neuralAudio != null &&
+        neuralAudio.bytes != null &&
+        neuralAudio.bytes!.isNotEmpty) {
       final audioBytes = neuralAudio.bytes!;
 
       // Step 4: Save successful MP3 into LocalVoiceCacheManager
       if (!kIsWeb && hashKey.isNotEmpty) {
         try {
-          final savedFile = await LocalVoiceCacheManager.instance.saveAudioBytes(
+          final savedFile =
+              await LocalVoiceCacheManager.instance.saveAudioBytes(
             hashKey,
             audioBytes,
           );
@@ -337,7 +351,8 @@ class VoiceService {
             return;
           }
         } catch (cacheErr) {
-          debugPrint('[VoiceService] Warning: Could not cache audio to disk: $cacheErr');
+          debugPrint(
+              '[VoiceService] Warning: Could not cache audio to disk: $cacheErr');
         }
       }
 
@@ -366,6 +381,18 @@ class VoiceService {
     );
   }
 
+  void _notifyPlaybackStarted() {
+    final callback = _pendingPlaybackStarted;
+    _pendingPlaybackStarted = null;
+    if (callback != null) {
+      try {
+        callback();
+      } catch (e) {
+        debugPrint('[VoiceService] playback-start callback error: $e');
+      }
+    }
+  }
+
   Future<void> _stopActiveEngines() async {
     try {
       await _audioPlayer.stop();
@@ -382,6 +409,7 @@ class VoiceService {
       onSpeakingStateChanged?.call(true);
 
       await _audioPlayer.setFilePath(file.path);
+      _notifyPlaybackStarted();
       await _audioPlayer.play();
     } catch (e) {
       debugPrint('[VoiceService] Error playing cached file: $e');
@@ -401,6 +429,7 @@ class VoiceService {
       // Create a temporary data source for JustAudio
       final source = _BytesAudioSource(bytes);
       await _audioPlayer.setAudioSource(source);
+      _notifyPlaybackStarted();
       await _audioPlayer.play();
     } catch (e) {
       debugPrint('[VoiceService] Error playing audio bytes: $e');
@@ -420,16 +449,18 @@ class VoiceService {
   }) async {
     if (_serverStreamingGateway == null) return null;
 
-    final response = await http.post(
-      Uri.parse(_serverStreamingGateway!),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'text': text,
-        'avatarId': characterId,
-        'lang': language,
-        'speed': speedMultiplier,
-      }),
-    ).timeout(const Duration(seconds: 15));
+    final response = await http
+        .post(
+          Uri.parse(_serverStreamingGateway!),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'text': text,
+            'avatarId': characterId,
+            'lang': language,
+            'speed': speedMultiplier,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (currentRequestId != _activeSpeechRequestId) {
       return null;
@@ -477,13 +508,21 @@ class VoiceService {
             final name = (v['name'] as String? ?? '').toLowerCase();
             final locale = (v['locale'] as String? ?? '').toLowerCase();
             if (locale.startsWith(targetLangPrefix)) {
-              if (isFemale && (name.contains('female') || name.contains('sfg') || name.contains('tpf'))) {
+              if (isFemale &&
+                  (name.contains('female') ||
+                      name.contains('sfg') ||
+                      name.contains('tpf'))) {
                 selectedDeviceVoice = v['name'] as String?;
-                await _flutterTts.setVoice({'name': v['name'], 'locale': v['locale']});
+                await _flutterTts
+                    .setVoice({'name': v['name'], 'locale': v['locale']});
                 break;
-              } else if (!isFemale && (name.contains('male') || name.contains('iol') || name.contains('rgd'))) {
+              } else if (!isFemale &&
+                  (name.contains('male') ||
+                      name.contains('iol') ||
+                      name.contains('rgd'))) {
                 selectedDeviceVoice = v['name'] as String?;
-                await _flutterTts.setVoice({'name': v['name'], 'locale': v['locale']});
+                await _flutterTts
+                    .setVoice({'name': v['name'], 'locale': v['locale']});
                 break;
               }
             }
@@ -543,6 +582,7 @@ class VoiceService {
 
   Future<void> stopSpeaking() async {
     _activeSpeechRequestId++;
+    _pendingPlaybackStarted = null;
     await _serverNeuralVoiceService.stop();
     await _stopActiveEngines();
     _isSpeaking = false;

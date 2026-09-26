@@ -47,3 +47,17 @@ Thumbs.db
 *.tmp
 *.bak
 *~
+
+# Local crash / diagnostic artifacts
+*.hprof
+java_pid*.hprof
+
+# Local repair backups
+.before-
+.dart.before-
+
+# Accidental shell/grep artifacts
+sistantMsg*
+|_handleSave*
+.before-
+.dart.before-

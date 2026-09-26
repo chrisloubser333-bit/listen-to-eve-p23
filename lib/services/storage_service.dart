@@ -24,6 +24,9 @@ class StorageService {
   static const _keyCharacterId = 'selected_character_id';
   static const _keyDarkMode = 'dark_mode';
   static const _keyMessages = 'chat_messages';
+  static const _keyMessagesByCharacterPrefix = 'chat_messages_character_';
+  static const _keyMessagesMigrationDone =
+      'chat_messages_character_migration_v1';
   static const _keyMemories = 'persisted_memories';
   static const _keySearchProxyEndpoint = 'search_proxy_endpoint';
   static const _keyImageProxyEndpoint = 'image_proxy_endpoint';
@@ -50,7 +53,8 @@ class StorageService {
   Future<void> saveSessionToken(String token, {DateTime? expiresAt}) async {
     await _prefs.setString(_keySessionToken, token.trim());
     if (expiresAt != null) {
-      await _prefs.setString(_keySessionTokenExpiry, expiresAt.toIso8601String());
+      await _prefs.setString(
+          _keySessionTokenExpiry, expiresAt.toIso8601String());
     } else {
       await _prefs.remove(_keySessionTokenExpiry);
     }
@@ -177,7 +181,9 @@ class StorageService {
 
   Future<String?> getSearchProxyEndpoint() async {
     final endpoint = _prefs.getString(_keySearchProxyEndpoint);
-    return (endpoint != null && endpoint.trim().isNotEmpty) ? endpoint.trim() : null;
+    return (endpoint != null && endpoint.trim().isNotEmpty)
+        ? endpoint.trim()
+        : null;
   }
 
   // Image Proxy Endpoint
@@ -187,7 +193,9 @@ class StorageService {
 
   Future<String?> getImageProxyEndpoint() async {
     final endpoint = _prefs.getString(_keyImageProxyEndpoint);
-    return (endpoint != null && endpoint.trim().isNotEmpty) ? endpoint.trim() : null;
+    return (endpoint != null && endpoint.trim().isNotEmpty)
+        ? endpoint.trim()
+        : null;
   }
 
   // Audio Streaming Proxy Endpoint
@@ -197,7 +205,9 @@ class StorageService {
 
   Future<String?> getAudioProxyEndpoint() async {
     final endpoint = _prefs.getString(_keyAudioProxyEndpoint);
-    return (endpoint != null && endpoint.trim().isNotEmpty) ? endpoint.trim() : null;
+    return (endpoint != null && endpoint.trim().isNotEmpty)
+        ? endpoint.trim()
+        : null;
   }
 
   // ==========================================
@@ -253,7 +263,15 @@ class StorageService {
   // Chat Messages & Memory Persistence
   // ==========================================
 
-  Future<void> saveMessages(List<ChatMessage> messages) async {
+  String _messagesKeyFor(String? characterId) {
+    final id = (characterId ?? _prefs.getString(_keyCharacterId) ?? 'eve')
+        .trim()
+        .toLowerCase();
+    return '$_keyMessagesByCharacterPrefix$id';
+  }
+
+  Future<void> saveMessages(List<ChatMessage> messages,
+      {String? characterId}) async {
     final sanitizedMessages = messages.map((m) {
       if (m.imageUrl != null &&
           (m.imageUrl!.startsWith('data:image') ||
@@ -265,11 +283,22 @@ class StorageService {
       return m.toJson();
     }).toList();
 
-    await _prefs.setString(_keyMessages, jsonEncode(sanitizedMessages));
+    await _prefs.setString(
+        _messagesKeyFor(characterId), jsonEncode(sanitizedMessages));
   }
 
-  Future<List<ChatMessage>> loadMessages() async {
-    final raw = _prefs.getString(_keyMessages);
+  Future<List<ChatMessage>> loadMessages({String? characterId}) async {
+    final scopedKey = _messagesKeyFor(characterId);
+    String? raw = _prefs.getString(scopedKey);
+    if ((raw == null || raw.isEmpty) &&
+        !(_prefs.getBool(_keyMessagesMigrationDone) ?? false)) {
+      final legacy = _prefs.getString(_keyMessages);
+      if (legacy != null && legacy.isNotEmpty) {
+        raw = legacy;
+        await _prefs.setString(scopedKey, legacy);
+      }
+      await _prefs.setBool(_keyMessagesMigrationDone, true);
+    }
     if (raw == null || raw.isEmpty) return [];
     try {
       final list = jsonDecode(raw) as List;
@@ -277,7 +306,7 @@ class StorageService {
           .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      _scheduleLazyImageMigration(messages);
+      _scheduleLazyImageMigration(messages, characterId: characterId);
       return messages;
     } catch (e) {
       debugPrint('[StorageService] Error decoding stored messages: $e');
@@ -285,7 +314,8 @@ class StorageService {
     }
   }
 
-  void _scheduleLazyImageMigration(List<ChatMessage> messages) {
+  void _scheduleLazyImageMigration(List<ChatMessage> messages,
+      {String? characterId}) {
     if (kIsWeb) return;
     final hasLegacyImages = messages.any((m) =>
         m.imageUrl != null &&
@@ -301,9 +331,11 @@ class StorageService {
         for (final m in messages) {
           if (m.imageUrl != null &&
               (m.imageUrl!.startsWith('data:image') ||
-                  LocalImageStorageManager.instance.isBase64Payload(m.imageUrl))) {
+                  LocalImageStorageManager.instance
+                      .isBase64Payload(m.imageUrl))) {
             try {
-              final localPath = await LocalImageStorageManager.instance.persistImagePayload(
+              final localPath =
+                  await LocalImageStorageManager.instance.persistImagePayload(
                 m.imageUrl!,
                 imageId: m.id,
                 prefix: 'migrated',
@@ -314,22 +346,24 @@ class StorageService {
                 continue;
               }
             } catch (err) {
-              debugPrint('[StorageService] Lazy migration failed for msg ${m.id}: $err');
+              debugPrint(
+                  '[StorageService] Lazy migration failed for msg ${m.id}: $err');
             }
           }
           updated.add(m);
         }
         if (changed) {
-          await saveMessages(updated);
+          await saveMessages(updated, characterId: characterId);
         }
       } catch (e) {
-        debugPrint('[StorageService] Exception during lazy image migration: $e');
+        debugPrint(
+            '[StorageService] Exception during lazy image migration: $e');
       }
     });
   }
 
-  Future<void> clearMessages() async {
-    await _prefs.remove(_keyMessages);
+  Future<void> clearMessages({String? characterId}) async {
+    await _prefs.remove(_messagesKeyFor(characterId));
   }
 
   // Memory persistence

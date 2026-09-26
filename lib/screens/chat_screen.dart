@@ -17,7 +17,8 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
+class _ChatScreenState extends State<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _bannerDismissed = false;
@@ -128,7 +129,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   ),
                   Text(
                     chat.isLoading
-                        ? (isAf ? '${character.name} dink...' : '${character.name} is thinking...')
+                        ? (isAf
+                            ? '${character.name} dink...'
+                            : '${character.name} is thinking...')
                         : (isAf ? 'Aktief' : 'Active'),
                     style: TextStyle(
                       fontSize: 12,
@@ -142,7 +145,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
+            icon: const Icon(Icons.settings_outlined,
+                color: AppTheme.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -164,7 +168,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             if (!chat.hasApiKey && !_bannerDismissed)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceLight.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(12),
@@ -175,7 +180,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.auto_awesome, size: 16, color: AppTheme.primary),
+                    const Icon(Icons.auto_awesome,
+                        size: 16, color: AppTheme.primary),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -189,7 +195,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 16, color: AppTheme.textSecondary),
+                      icon: const Icon(Icons.close,
+                          size: 16, color: AppTheme.textSecondary),
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -203,7 +210,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             if (chat.error != null)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
@@ -211,19 +219,22 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 18),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         chat.error!,
-                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                        style: const TextStyle(
+                            color: AppTheme.textPrimary, fontSize: 12),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     TextButton(
                       onPressed: () => chat.clearError(),
-                      child: Text(isAf ? 'Sluit' : 'Dismiss', style: const TextStyle(color: Colors.redAccent)),
+                      child: Text(isAf ? 'Sluit' : 'Dismiss',
+                          style: const TextStyle(color: Colors.redAccent)),
                     ),
                   ],
                 ),
@@ -245,7 +256,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                               parent: BouncingScrollPhysics(),
                             ),
                             // Dismisses keyboard naturally when swiping down the chat
-                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 10,
@@ -284,7 +296,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             // Speaking / Thinking live status indicator
             if (chat.isLoading)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                 child: Row(
                   children: [
                     const SizedBox(
@@ -337,9 +350,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       controller: _controller,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 15),
                       decoration: InputDecoration(
-                        hintText: isAf ? 'Tik jou boodskap...' : 'Type a message...',
+                        hintText:
+                            isAf ? 'Tik jou boodskap...' : 'Type a message...',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -434,9 +450,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     ChatProvider chat,
   ) {
     final statusText = chat.isLoading
-        ? (isAf ? '${character.name} dink...' : '${character.name} is thinking...')
+        ? (isAf
+            ? '${character.name} dink...'
+            : '${character.name} is thinking...')
         : chat.isSpeaking
-            ? (isAf ? '${character.name} praat...' : '${character.name} is speaking...')
+            ? (isAf
+                ? '${character.name} praat...'
+                : '${character.name} is speaking...')
             : chat.isListening
                 ? (isAf ? 'Luister tans...' : 'Listening...')
                 : character.getTagline(isAf);
@@ -472,7 +492,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               ExplodedImageModal.show(
                 context,
                 title: character.name,
-                subtitle: '${character.getTagline(isAf)} • ${character.getDescription(isAf)}',
+                subtitle:
+                    '${character.getTagline(isAf)} • ${character.getDescription(isAf)}',
                 assetPath: character.avatarAsset,
                 accentColor: character.themeColor,
                 isAvatar: true,
@@ -583,7 +604,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   ) {
     return Center(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -604,7 +626,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               alignment: WrapAlignment.center,
               children: [
                 _buildStarterChip(
-                  isAf ? 'Hallo ${character.name}!' : 'Hello ${character.name}!',
+                  isAf
+                      ? 'Hallo ${character.name}!'
+                      : 'Hello ${character.name}!',
                 ),
                 _buildStarterChip(
                   isAf ? 'Hoe voel jy vandag?' : 'How are you today?',

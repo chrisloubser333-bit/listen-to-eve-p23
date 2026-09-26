@@ -74,7 +74,8 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _loadHistory() async {
-    final saved = await _storage.loadMessages();
+    final saved =
+        await _storage.loadMessages(characterId: _settings.characterId);
     for (final m in saved) {
       if (m.content.contains('reached its spending limit') ||
           m.content.contains('bestedingslimiet') ||
@@ -89,15 +90,28 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _switchCharacterHistory(String characterId) async {
+    _messages.clear();
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+    final saved = await _storage.loadMessages(characterId: characterId);
+    if (_settings.characterId != characterId) return;
+    _messages
+      ..clear()
+      ..addAll(saved);
+    notifyListeners();
+  }
+
   Future<void> setApiKey(String key) async {
     _aiService.setApiKey(key);
     await _storage.saveApiKeyForProvider(_settings.aiProvider, key);
     notifyListeners();
   }
 
-
   void _initVoiceService() {
-    _voiceService.setServerBaseUrl(_settings.serverBaseUrl ?? _settings.searchProxyEndpoint);
+    _voiceService.setServerBaseUrl(
+        _settings.serverBaseUrl ?? _settings.searchProxyEndpoint);
 
     String lastObservedCharacterId = _settings.characterId;
     _settings.addListener(() {
@@ -106,8 +120,10 @@ class ChatProvider extends ChangeNotifier {
         lastObservedCharacterId = _settings.characterId;
         _voiceService.stopSpeaking();
         _actionLedger?.updateState(activeCharacterId: _settings.characterId);
+        _switchCharacterHistory(_settings.characterId);
       }
-      _voiceService.setServerBaseUrl(_settings.serverBaseUrl ?? _settings.searchProxyEndpoint);
+      _voiceService.setServerBaseUrl(
+          _settings.serverBaseUrl ?? _settings.searchProxyEndpoint);
     });
 
     _voiceService.onListeningStateChanged = (listening) {
@@ -126,7 +142,8 @@ class ChatProvider extends ChangeNotifier {
   }
 
   /// Toggles speech recognition using user configured pause duration
-  Future<void> toggleListening({Function(String partial)? onPartialText}) async {
+  Future<void> toggleListening(
+      {Function(String partial)? onPartialText}) async {
     if (_isListening) {
       await _voiceService.stopListening();
     } else {
@@ -167,12 +184,15 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       const maxHistoryTurns = 30;
-      final historicalErrors = _messages.where((m) =>
-          m.role != MessageRole.system &&
-          (m.content.contains('reached its spending limit') ||
-              m.content.contains('bestedingslimiet') ||
-              m.content.contains('spending limit') ||
-              m.content.contains('Image creation is currently unavailable'))).toList();
+      final historicalErrors = _messages
+          .where((m) =>
+              m.role != MessageRole.system &&
+              (m.content.contains('reached its spending limit') ||
+                  m.content.contains('bestedingslimiet') ||
+                  m.content.contains('spending limit') ||
+                  m.content
+                      .contains('Image creation is currently unavailable')))
+          .toList();
       if (historicalErrors.isNotEmpty) {
         debugPrint(
           '[HISTORICAL_ERROR_ONLY] Filtered ${historicalErrors.length} historical image generation error(s) from LLM context to prevent false hallucinated downtime.',
@@ -200,28 +220,38 @@ class ChatProvider extends ChangeNotifier {
       final imageDetection = detectImageIntent(text);
 
       if (imageDetection != null && imageDetection.isIntent) {
-        final targetCharId = imageDetection.explicitCharacterId ?? _settings.characterId;
+        final targetCharId =
+            imageDetection.explicitCharacterId ?? _settings.characterId;
         final targetProfile = CharacterRegistry.getById(targetCharId);
         final proxyEndpoint = _aiService is SwitchableAiService
-            ? (_aiService as SwitchableAiService).imageProxyTransport?.proxyUri?.toString()
+            ? (_aiService as SwitchableAiService)
+                .imageProxyTransport
+                ?.proxyUri
+                ?.toString()
             : null;
 
         debugPrint('========================================');
         debugPrint('[IMAGE_INTENT_DETECTED]');
         debugPrint('  - Original user prompt: "$text"');
-        debugPrint('  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
-        debugPrint('  - Clean extracted subject: "${imageDetection.rawPrompt}"');
-        debugPrint('  - Character target: $targetCharId (${targetProfile.name})');
-        debugPrint('  - Specific scene: "${imageDetection.specificScene ?? 'none'}"');
+        debugPrint(
+            '  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
+        debugPrint(
+            '  - Clean extracted subject: "${imageDetection.rawPrompt}"');
+        debugPrint(
+            '  - Character target: $targetCharId (${targetProfile.name})');
+        debugPrint(
+            '  - Specific scene: "${imageDetection.specificScene ?? 'none'}"');
         debugPrint('  - Selected provider: ${_settings.aiProvider}');
         debugPrint('========================================');
 
         debugPrint('[IMAGE_GENERATION_INVOKED]');
         debugPrint('  - Original user prompt: "$text"');
-        debugPrint('  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
+        debugPrint(
+            '  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
         debugPrint('  - Selected provider: ${_settings.aiProvider}');
         debugPrint('  - generateImage() called: true');
-        debugPrint('  - Proxy endpoint: ${proxyEndpoint ?? "direct vendor API"}');
+        debugPrint(
+            '  - Proxy endpoint: ${proxyEndpoint ?? "direct vendor API"}');
 
         String promptToGenerate;
         List<ImageReference>? referenceImages;
@@ -235,7 +265,8 @@ class ChatProvider extends ChangeNotifier {
                 bytes: assetBytes,
                 mimeType: 'image/jpeg',
                 characterId: targetProfile.id,
-                description: '${targetProfile.name} canonical portrait reference',
+                description:
+                    '${targetProfile.name} canonical portrait reference',
               ),
             ];
           }
@@ -245,7 +276,8 @@ class ChatProvider extends ChangeNotifier {
             isPhotorealistic: imageDetection.isPhotoOrSelfie,
             isFullBody: imageDetection.isFullBody,
             isArtistic: imageDetection.isArtistic,
-            hasReferenceImage: referenceImages != null && referenceImages.isNotEmpty,
+            hasReferenceImage:
+                referenceImages != null && referenceImages.isNotEmpty,
           );
         } else {
           // Generic image request (e.g. "a lion", "Cape Town at sunset")
@@ -281,7 +313,8 @@ class ChatProvider extends ChangeNotifier {
           try {
             final toolResult = await _orchestrator!.evaluateAndExecute(text);
             if (toolResult != null && toolResult.snippet.trim().isNotEmpty) {
-              promptToGenerate += ' [Environmental Context: ${toolResult.snippet.trim()}]';
+              promptToGenerate +=
+                  ' [Environmental Context: ${toolResult.snippet.trim()}]';
             }
           } catch (_) {}
         }
@@ -309,24 +342,31 @@ class ChatProvider extends ChangeNotifier {
           // decode in background isolate and persist to local binary file.
           // This prevents SharedPreferences bloat, JSON stalls, and high startup memory.
           if (rawImagePayload.startsWith('data:image') ||
-              LocalImageStorageManager.instance.isBase64Payload(rawImagePayload)) {
+              LocalImageStorageManager.instance
+                  .isBase64Payload(rawImagePayload)) {
             try {
-              finalImageUrl = await LocalImageStorageManager.instance.persistImagePayload(
+              finalImageUrl =
+                  await LocalImageStorageManager.instance.persistImagePayload(
                 rawImagePayload,
                 imageId: imageMsgId,
                 prefix: 'chat',
               );
-              debugPrint('[IMAGE_PERSISTED] Successfully saved image to binary file: $finalImageUrl');
+              debugPrint(
+                  '[IMAGE_PERSISTED] Successfully saved image to binary file: $finalImageUrl');
             } catch (persistErr) {
-              debugPrint('[IMAGE_PERSIST_WARNING] Local persistence failed, using raw payload: $persistErr');
+              debugPrint(
+                  '[IMAGE_PERSIST_WARNING] Local persistence failed, using raw payload: $persistErr');
               finalImageUrl = rawImagePayload;
             }
-          } else if (rawImagePayload.startsWith('http://') || rawImagePayload.startsWith('https://')) {
+          } else if (rawImagePayload.startsWith('http://') ||
+              rawImagePayload.startsWith('https://')) {
             finalImageUrl = rawImagePayload;
-          } else if (rawImagePayload.startsWith('/') || rawImagePayload.startsWith('file://')) {
+          } else if (rawImagePayload.startsWith('/') ||
+              rawImagePayload.startsWith('file://')) {
             finalImageUrl = rawImagePayload;
           } else {
-            debugPrint('[IMAGE_PAYLOAD_UNEXPECTED] Received unrecognized payload format.');
+            debugPrint(
+                '[IMAGE_PAYLOAD_UNEXPECTED] Received unrecognized payload format.');
             throw const ImageGenerationException(
                 'Unexpected image payload format returned by image provider.');
           }
@@ -334,11 +374,13 @@ class ChatProvider extends ChangeNotifier {
           debugPrint('========================================');
           debugPrint('[IMAGE_GENERATION_SUCCESS]');
           debugPrint('  - Original user prompt: "$text"');
-          debugPrint('  - Clean extracted subject: "${imageDetection.rawPrompt}"');
+          debugPrint(
+              '  - Clean extracted subject: "${imageDetection.rawPrompt}"');
           debugPrint('  - Selected provider: ${_settings.aiProvider}');
           debugPrint('  - Success: true');
           debugPrint('  - Stored image reference: $finalImageUrl');
-          debugPrint('  - Stored reference type: ${finalImageUrl.startsWith("/") ? "Local File Path" : (finalImageUrl.startsWith("http") ? "Remote URL" : "Data URI")}');
+          debugPrint(
+              '  - Stored reference type: ${finalImageUrl.startsWith("/") ? "Local File Path" : (finalImageUrl.startsWith("http") ? "Remote URL" : "Data URI")}');
           debugPrint('========================================');
 
           final confirmationText = isAf
@@ -383,7 +425,8 @@ class ChatProvider extends ChangeNotifier {
           }
 
           try {
-            await _storage.saveMessages(_messages);
+            await _storage.saveMessages(_messages,
+                characterId: _settings.characterId);
           } catch (storageErr) {
             debugPrint('Storage save error (non-fatal): $storageErr');
           }
@@ -395,11 +438,13 @@ class ChatProvider extends ChangeNotifier {
           debugPrint('========================================');
           debugPrint('[IMAGE_GENERATION_FAILURE]');
           debugPrint('  - Original user prompt: "$text"');
-          debugPrint('  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
+          debugPrint(
+              '  - Detected intent: ${imageDetection.isSelfReference ? "Character Portrait/Selfie" : "Generic/Landscape Image"}');
           debugPrint('  - Selected provider: ${_settings.aiProvider}');
           debugPrint('  - Success: false');
           debugPrint('  - Error: $imgErr (Type: ${imgErr.runtimeType})');
-          debugPrint('  - Action: displaying concise actionable image-generation error (TERMINATING BRANCH - NO TEXT FALLBACK)');
+          debugPrint(
+              '  - Action: displaying concise actionable image-generation error (TERMINATING BRANCH - NO TEXT FALLBACK)');
           debugPrint('========================================');
           String failureText;
           if (imgErr is ImageGenerationException) {
@@ -420,22 +465,27 @@ class ChatProvider extends ChangeNotifier {
                   ? 'Prentskepping vereis \'n geldige API-sleutel in die instellings of \'n gekoppelde beeldbediener.'
                   : 'Image creation requires a valid API key configured in Settings or an active backend image proxy.';
             } else if (imgErr.isConnectionTimeout) {
-              debugPrint('[IMAGE_GENERATION_TIMEOUT] Connection timed out before reaching image service.');
+              debugPrint(
+                  '[IMAGE_GENERATION_TIMEOUT] Connection timed out before reaching image service.');
               failureText = isAf
                   ? 'Kon nie met die beelddiens koppel nie weens \'n netwerk-uitval. Gaan asseblief jou bedienerinstellings na.'
                   : 'Could not connect to the image service. Please check your internet connection or server settings.';
             } else if (imgErr.isGenerationTimeout) {
-              debugPrint('[IMAGE_GENERATION_TIMEOUT] Image generation rendering timed out.');
+              debugPrint(
+                  '[IMAGE_GENERATION_TIMEOUT] Image generation rendering timed out.');
               failureText = isAf
                   ? 'Prentgenerering het langer geneem as verwag om te voltooi. Probeer asseblief weer.'
                   : 'Image creation timed out while waiting for rendering. Please try again.';
             } else if (imgErr.isTimeout) {
-              debugPrint('[IMAGE_GENERATION_TIMEOUT] Generic image generation timeout.');
+              debugPrint(
+                  '[IMAGE_GENERATION_TIMEOUT] Generic image generation timeout.');
               failureText = isAf
                   ? 'Prentskepping het uitgetel terwyl daar met die diens gekommunikeer is. Probeer asseblief weer.'
                   : 'Image creation timed out while connecting to the image service. Please try again.';
             } else if (imgErr.isNetworkIssue) {
-              if (imgErr.message.contains('localhost') || (imgErr.sanitizedDetail != null && imgErr.sanitizedDetail!.contains('localhost'))) {
+              if (imgErr.message.contains('localhost') ||
+                  (imgErr.sanitizedDetail != null &&
+                      imgErr.sanitizedDetail!.contains('localhost'))) {
                 failureText = isAf
                     ? 'Kan nie localhost vanaf \'n Android-toestel bereik nie. Voer asseblief jou rekenaar se Wi-Fi IP (bv. http://192.168.x.x:3000) in Instellings in, of voer "adb reverse tcp:3000 tcp:3000" uit.'
                     : 'Cannot reach localhost from an Android physical device. Please enter your computer\'s Wi-Fi IP (e.g. http://192.168.x.x:3000) in Settings, or run "adb reverse tcp:3000 tcp:3000".';
@@ -444,8 +494,11 @@ class ChatProvider extends ChangeNotifier {
                     ? 'Netwerkfout tydens verbinding met die beelddiens. Gaan asseblief jou internetverbinding na.'
                     : 'Network error communicating with the image service. Please check your connection and try again.';
               }
-            } else if (imgErr.category == ImageGenerationErrorCategory.validation) {
-              if (imgErr.message.contains('Settings') || imgErr.message.contains('Instellings') || imgErr.message.contains('not configured')) {
+            } else if (imgErr.category ==
+                ImageGenerationErrorCategory.validation) {
+              if (imgErr.message.contains('Settings') ||
+                  imgErr.message.contains('Instellings') ||
+                  imgErr.message.contains('not configured')) {
                 failureText = isAf
                     ? 'Die beeldbediener-eindpunt is nog nie vir hierdie toestel opgestel nie. Voer asseblief jou bediener-URL (bv. http://192.168.x.x:3000) in Instellings in.'
                     : 'The image generation server endpoint is not configured for this device. Please enter your server URL (e.g. http://192.168.x.x:3000) in Settings.';
@@ -505,7 +558,8 @@ class ChatProvider extends ChangeNotifier {
             );
           }
 
-          await _storage.saveMessages(_messages);
+          await _storage.saveMessages(_messages,
+              characterId: _settings.characterId);
           _isLoading = false;
           notifyListeners();
           return;
@@ -552,8 +606,9 @@ class ChatProvider extends ChangeNotifier {
       if (_memoryService != null) {
         for (final mem in recalledMemories) {
           if (mem.topicKey == 'user_name') {
-            final match = RegExp(r'(?:name is|naam is)\s+([^.(]+)', caseSensitive: false)
-                .firstMatch(mem.content);
+            final match =
+                RegExp(r'(?:name is|naam is)\s+([^.(]+)', caseSensitive: false)
+                    .firstMatch(mem.content);
             if (match != null) {
               knownUserName = match.group(1)?.trim();
               break;
@@ -563,7 +618,8 @@ class ChatProvider extends ChangeNotifier {
         if (knownUserName == null || knownUserName.isEmpty) {
           for (final mem in _memoryService.memories) {
             if (mem.topicKey == 'user_name') {
-              final match = RegExp(r'(?:name is|naam is)\s+([^.(]+)', caseSensitive: false)
+              final match = RegExp(r'(?:name is|naam is)\s+([^.(]+)',
+                      caseSensitive: false)
                   .firstMatch(mem.content);
               if (match != null) {
                 knownUserName = match.group(1)?.trim();
@@ -599,7 +655,8 @@ class ChatProvider extends ChangeNotifier {
           ? _formatMemoryContext(recalledMemories, _settings.language)
           : null;
 
-      final followUpPrompt = resolvedContext.formatForPrompt(language: _settings.language);
+      final followUpPrompt =
+          resolvedContext.formatForPrompt(language: _settings.language);
 
       // 3.5 Provider-independent external knowledge/tool execution if needed
       // (Do NOT trigger a redundant new tool search if the user is asking for sources of a previous action)
@@ -619,12 +676,15 @@ class ChatProvider extends ChangeNotifier {
         }
       }
 
-      final toolContext = toolResult?.formatForPrompt(language: _settings.language);
+      final toolContext =
+          toolResult?.formatForPrompt(language: _settings.language);
 
-      final fullSystemPrompt = [personaPrompt, memoryContext, followUpPrompt, toolContext]
-          .whereType<String>()
-          .where((s) => s.isNotEmpty)
-          .join('\n\n');
+      final fullSystemPrompt = [
+        personaPrompt,
+        memoryContext,
+        followUpPrompt,
+        toolContext
+      ].whereType<String>().where((s) => s.isNotEmpty).join('\n\n');
 
       // 4. Generate response with bounded prompt context (with offline conversational fallback)
       String cleanReply;
@@ -646,7 +706,8 @@ class ChatProvider extends ChangeNotifier {
           );
         }
       } catch (providerError) {
-        debugPrint('Provider error, using offline conversational fallback: $providerError');
+        debugPrint(
+            'Provider error, using offline conversational fallback: $providerError');
         cleanReply = OfflineConversationalFallback.generateReply(
           userMessage: text,
           characterId: _settings.characterId,
@@ -686,7 +747,9 @@ class ChatProvider extends ChangeNotifier {
       final finalReply = verificationResult.verifiedResponse;
 
       _actionLedger?.updateState(
-        lastAssistantClaim: finalReply.length > 200 ? '${finalReply.substring(0, 197)}...' : finalReply,
+        lastAssistantClaim: finalReply.length > 200
+            ? '${finalReply.substring(0, 197)}...'
+            : finalReply,
       );
 
       final assistantMsg = ChatMessage(
@@ -695,20 +758,47 @@ class ChatProvider extends ChangeNotifier {
         content: finalReply,
         timestamp: DateTime.now(),
       );
-      _messages.add(assistantMsg);
 
-      // Speak the reply with character-specific humanized voice
+      var assistantMessagePublished = false;
+
+      Future<void> publishAssistantMessage() async {
+        if (assistantMessagePublished) return;
+        assistantMessagePublished = true;
+
+        _messages.add(assistantMsg);
+
+        await _storage.saveMessages(
+          _messages,
+          characterId: _settings.characterId,
+        );
+
+        notifyListeners();
+      }
+
+      // When automatic voice is enabled, keep the completed response hidden
+      // until actual audio playback begins. This keeps the text and spoken
+      // response perceptually synchronized instead of revealing the entire
+      // answer while neural TTS is still being prepared.
       if (_settings.autoVoiceReply && finalReply.trim().isNotEmpty) {
-        // Fire and let TTS speak without blocking the UI
-        _voiceService.speak(
+        _voiceService
+            .speak(
           text: finalReply,
           characterId: _settings.characterId,
           language: _settings.language,
           speedMultiplier: _settings.speechSpeed,
-        );
+          onPlaybackStarted: () {
+            publishAssistantMessage();
+          },
+        )
+            .catchError((Object error, StackTrace stackTrace) {
+          debugPrint('VOICE ERROR: $error');
+          // Never lose the assistant response if voice synthesis/playback
+          // fails before the playback-start event.
+          publishAssistantMessage();
+        });
+      } else {
+        await publishAssistantMessage();
       }
-
-      await _storage.saveMessages(_messages);
     } catch (e, stack) {
       debugPrint('CHAT ERROR: $e');
       debugPrint('$stack');
@@ -722,7 +812,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> clearHistory() async {
     _messages.clear();
     _actionLedger?.reset(activeCharacterId: _settings.characterId);
-    await _storage.clearMessages();
+    await _storage.clearMessages(characterId: _settings.characterId);
     notifyListeners();
   }
 
@@ -797,10 +887,13 @@ class ChatProvider extends ChangeNotifier {
     if (trimmed.isEmpty) return null;
 
     // 0. Sanitize input: strip leading/trailing quotes (ASCII and Unicode: ", ', “, ”, ‘, ’, «, », etc.)
-    trimmed = trimmed.replaceAll(
-      RegExp(r'^[\s\x22\x27\x60\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\(\)\[\]\?\.\!]+|[\s\x22\x27\x60\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\(\)\[\]\?\.\!]+$'),
-      '',
-    ).trim();
+    trimmed = trimmed
+        .replaceAll(
+          RegExp(
+              r'^[\s\x22\x27\x60\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\(\)\[\]\?\.\!]+|[\s\x22\x27\x60\u201C\u201D\u2018\u2019\u00AB\u00BB\u201E\(\)\[\]\?\.\!]+$'),
+          '',
+        )
+        .trim();
     if (trimmed.isEmpty) return null;
 
     // Clean trailing punctuation
@@ -870,7 +963,8 @@ class ChatProvider extends ChangeNotifier {
     );
     final greetingOnlyMatch = greetingOnlyPrefix.firstMatch(cleaned);
     if (greetingOnlyMatch != null) {
-      cleaned = '${greetingOnlyMatch.group(1)} ${cleaned.substring(greetingOnlyMatch.end).trim()}';
+      cleaned =
+          '${greetingOnlyMatch.group(1)} ${cleaned.substring(greetingOnlyMatch.end).trim()}';
     }
 
     String queryWithoutCharPrefix = cleaned;
@@ -881,7 +975,10 @@ class ChatProvider extends ChangeNotifier {
     );
     final matchChar = charPrefixPattern.firstMatch(cleaned);
     if (matchChar != null) {
-      final rawName = matchChar.group(0)!.replaceAll(RegExp(r'[\,\:\s]+'), '').toLowerCase();
+      final rawName = matchChar
+          .group(0)!
+          .replaceAll(RegExp(r'[\,\:\s]+'), '')
+          .toLowerCase();
       if (const ['eve', 'ara', 'leo', 'rex', 'sal'].contains(rawName)) {
         explicitCharacterFromPrefix = rawName;
       }
@@ -890,12 +987,16 @@ class ChatProvider extends ChangeNotifier {
 
     // 2. Direct self-look / portrait / selfie requests
     final selfLookPatterns = [
-      RegExp(r'^(?:can you\s+|could you\s+|please\s+)?(?:show me|send me|take|wys my|stuur vir my|gee my)\s+(?:what you look like|your face|how you look|a photo of you|a photo of yourself|a picture of yourself|a selfie|a selfie of yourself|\x27n foto van jou|\x27n foto van jouself|\x27n prent van jouself|hoe jy lyk|jou gesig|\x27n selfie)$', caseSensitive: false),
-      RegExp(r'^(?:what do you look like|what do u look like|hoe lyk jy)$', caseSensitive: false),
+      RegExp(
+          r'^(?:can you\s+|could you\s+|please\s+)?(?:show me|send me|take|wys my|stuur vir my|gee my)\s+(?:what you look like|your face|how you look|a photo of you|a photo of yourself|a picture of yourself|a selfie|a selfie of yourself|\x27n foto van jou|\x27n foto van jouself|\x27n prent van jouself|hoe jy lyk|jou gesig|\x27n selfie)$',
+          caseSensitive: false),
+      RegExp(r'^(?:what do you look like|what do u look like|hoe lyk jy)$',
+          caseSensitive: false),
     ];
 
     for (final pattern in selfLookPatterns) {
-      if (pattern.hasMatch(cleaned) || pattern.hasMatch(queryWithoutCharPrefix)) {
+      if (pattern.hasMatch(cleaned) ||
+          pattern.hasMatch(queryWithoutCharPrefix)) {
         return ImageIntentResult(
           isIntent: true,
           rawPrompt: 'photo of yourself',
@@ -948,7 +1049,8 @@ class ChatProvider extends ChangeNotifier {
         final match = pattern.firstMatch(queryToTest);
         if (match != null && match.groupCount >= 1) {
           var rawExtracted = match.group(match.groupCount)?.trim() ?? '';
-          rawExtracted = rawExtracted.replaceAll(RegExp(r'^[\,\:\-\s]+'), '').trim();
+          rawExtracted =
+              rawExtracted.replaceAll(RegExp(r'^[\,\:\-\s]+'), '').trim();
           if (rawExtracted.isNotEmpty && rawExtracted.length > 1) {
             return _parseImageSubject(
               fullQuery: cleaned,
@@ -1037,13 +1139,15 @@ class ChatProvider extends ChangeNotifier {
     // Clean extractedSubject to remove residual conversational prefixes, leading articles, and punctuation
     var cleanPrompt = extractedSubject.trim();
     cleanPrompt = cleanPrompt.replaceAll(RegExp(r'^[\,\:\-\s]+'), '').trim();
-    cleanPrompt = cleanPrompt.replaceAll(
-      RegExp(
-        r'^(?:(?:an?|\x27n|the|die)\s+)?(?:image|picture|photo|photograph|painting|illustration|drawing|prent|prentjie|foto|skildery)\s+(?:of|showing|with|about|van|oor|met)\s+',
-        caseSensitive: false,
-      ),
-      '',
-    ).trim();
+    cleanPrompt = cleanPrompt
+        .replaceAll(
+          RegExp(
+            r'^(?:(?:an?|\x27n|the|die)\s+)?(?:image|picture|photo|photograph|painting|illustration|drawing|prent|prentjie|foto|skildery)\s+(?:of|showing|with|about|van|oor|met)\s+',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
     // Preserve leading articles such as "a", "an", "the", "'n" and "die".
     // They are part of the user's requested image subject.
     cleanPrompt = cleanPrompt.replaceAll(RegExp(r'[\?\.!\s]+$'), '').trim();
