@@ -243,6 +243,104 @@ class VoiceService {
     } catch (_) {}
   }
 
+  /// Maximum text size sent in one neural synthesis request.
+  ///
+  /// Kept below the backend/provider ceiling so punctuation and normal
+  /// conversational responses do not accidentally exceed the request limit.
+  static const int _maxNeuralChunkChars = 450;
+
+  /// Splits sanitized speech text into ordered neural synthesis chunks.
+  ///
+  /// Preference order:
+  /// 1. Sentence boundary.
+  /// 2. Clause/punctuation boundary.
+  /// 3. Whitespace.
+  /// 4. Hard character boundary as a last resort.
+  ///
+  /// No non-whitespace content is discarded.
+  static List<String> _splitNeuralTextIntoChunks(
+    String text, {
+    int maxChars = _maxNeuralChunkChars,
+  }) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) return const <String>[];
+
+    if (maxChars < 1) {
+      throw ArgumentError.value(maxChars, 'maxChars', 'Must be greater than 0');
+    }
+
+    if (normalized.length <= maxChars) {
+      return <String>[normalized];
+    }
+
+    final chunks = <String>[];
+    var remaining = normalized;
+
+    while (remaining.length > maxChars) {
+      final window = remaining.substring(0, maxChars + 1);
+
+      int splitAt = -1;
+
+      // Prefer complete sentence endings.
+      for (var i = maxChars; i > 0; i--) {
+        final previous = window[i - 1];
+        final next = i < window.length ? window[i] : '';
+
+        if ((previous == '.' || previous == '!' || previous == '?') &&
+            (next.isEmpty || RegExp(r'\s').hasMatch(next))) {
+          splitAt = i;
+          break;
+        }
+      }
+
+      // Then prefer softer punctuation boundaries.
+      if (splitAt <= 0) {
+        for (var i = maxChars; i > 0; i--) {
+          final previous = window[i - 1];
+          final next = i < window.length ? window[i] : '';
+
+          if ((previous == ';' ||
+                  previous == ':' ||
+                  previous == ',' ||
+                  previous == '—' ||
+                  previous == '–') &&
+              (next.isEmpty || RegExp(r'\s').hasMatch(next))) {
+            splitAt = i;
+            break;
+          }
+        }
+      }
+
+      // Then use the nearest whitespace boundary.
+      if (splitAt <= 0) {
+        for (var i = maxChars; i > 0; i--) {
+          if (RegExp(r'\s').hasMatch(window[i - 1])) {
+            splitAt = i;
+            break;
+          }
+        }
+      }
+
+      // A single uninterrupted token may itself exceed the limit.
+      if (splitAt <= 0) {
+        splitAt = maxChars;
+      }
+
+      final chunk = remaining.substring(0, splitAt).trim();
+      if (chunk.isNotEmpty) {
+        chunks.add(chunk);
+      }
+
+      remaining = remaining.substring(splitAt).trimLeft();
+    }
+
+    if (remaining.trim().isNotEmpty) {
+      chunks.add(remaining.trim());
+    }
+
+    return chunks;
+  }
+
   /// Speaks text with multi-tier vocal execution:
   /// 1. Check local neural voice cache.
   /// 2. If cache hit -> play cached MP3 with JustAudio.
@@ -294,91 +392,172 @@ class VoiceService {
       return;
     }
 
-    // Step 1: Check local neural voice cache
-    if (!kIsWeb && hashKey.isNotEmpty) {
-      final cachedFile =
-          await LocalVoiceCacheManager.instance.getCachedAudioFile(hashKey);
-      if (cachedFile != null && await cachedFile.exists()) {
+    final chunks = _splitNeuralTextIntoChunks(cleanText);
+
+    if (chunks.isEmpty) return;
+
+    debugPrint(
+      '[VoiceService] Neural speech split into ${chunks.length} chunk(s) '
+      'for request $currentRequestId.',
+    );
+
+    for (var chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      if (_activeSpeechRequestId != currentRequestId) {
         debugPrint(
-            '[VoiceService] Cache hit for key $hashKey (${cachedFile.path}). Playing from disk.');
-        // Step 2: If cache hit -> play cached MP3 with JustAudio
-        await _playCachedFile(cachedFile, currentRequestId);
+          '[VoiceService] Speech request $currentRequestId interrupted '
+          'before chunk ${chunkIndex + 1}/${chunks.length}.',
+        );
         return;
       }
-    }
 
-    // Step 3: If cache miss and server URL is configured -> call ServerNeuralVoiceGenerationService
-    GeneratedAudio? neuralAudio;
-    try {
-      neuralAudio = await _serverNeuralVoiceService.synthesize(
-        cleanText,
-        profile: profile,
-        settings: VoiceSettings(
-          languageCode: language,
-          speedMultiplier: speedMultiplier,
-          pitch: profile.pitch,
-        ),
+      final chunk = chunks[chunkIndex];
+
+      // Cache keys must be generated per chunk. Reusing the full-response key
+      // would make independently synthesized chunks collide in the cache.
+      final chunkCacheResult =
+          await LocalVoiceCacheManager.instance.sanitizeAndComputeKey(
+        text: chunk,
+        characterId: characterId,
+        language: language,
+        speedMultiplier: speedMultiplier,
+        pitch: profile.pitch,
+        baseRate: profile.baseRate,
+        neuralVoiceId: profile.neuralVoiceId,
+        voiceEngineVersion: voiceEngineVersion,
       );
-    } catch (e) {
+
+      if (_activeSpeechRequestId != currentRequestId) return;
+
+      final chunkText = chunkCacheResult['cleanText'] ?? chunk;
+      final chunkHashKey = chunkCacheResult['hashKey'] ?? '';
+
+      if (chunkText.trim().isEmpty) {
+        continue;
+      }
+
       debugPrint(
-          '[VoiceService] ServerNeuralVoiceGenerationService dispatch exception: $e');
-    }
+        '[VoiceService] Processing neural chunk '
+        '${chunkIndex + 1}/${chunks.length} '
+        '(len=${chunkText.length}).',
+      );
 
-    // Stale check after async network call: guard against interruption/character switch
-    if (_activeSpeechRequestId != currentRequestId) {
-      debugPrint(
-          '[VoiceService] Stale speech request $currentRequestId discarded after network response.');
-      return;
-    }
+      // Step 1: Check the local neural cache for this chunk.
+      if (!kIsWeb && chunkHashKey.isNotEmpty) {
+        final cachedFile =
+            await LocalVoiceCacheManager.instance.getCachedAudioFile(
+          chunkHashKey,
+        );
 
-    if (neuralAudio != null &&
-        neuralAudio.bytes != null &&
-        neuralAudio.bytes!.isNotEmpty) {
-      final audioBytes = neuralAudio.bytes!;
+        if (_activeSpeechRequestId != currentRequestId) return;
 
-      // Step 4: Save successful MP3 into LocalVoiceCacheManager
-      if (!kIsWeb && hashKey.isNotEmpty) {
-        try {
-          final savedFile =
-              await LocalVoiceCacheManager.instance.saveAudioBytes(
-            hashKey,
-            audioBytes,
-          );
-          if (savedFile != null && await savedFile.exists()) {
-            if (_activeSpeechRequestId != currentRequestId) return;
-            // Step 5: Play with JustAudio
-            await _playCachedFile(savedFile, currentRequestId);
-            return;
-          }
-        } catch (cacheErr) {
+        if (cachedFile != null && await cachedFile.exists()) {
           debugPrint(
-              '[VoiceService] Warning: Could not cache audio to disk: $cacheErr');
+            '[VoiceService] Cache hit for neural chunk '
+            '${chunkIndex + 1}/${chunks.length}.',
+          );
+
+          await _playCachedFile(cachedFile, currentRequestId);
+
+          if (_activeSpeechRequestId != currentRequestId) return;
+          continue;
         }
       }
 
-      // Step 5 (Memory/Web fallback): Play with JustAudio
+      // Step 2: Synthesize this chunk through the server neural provider.
+      GeneratedAudio? neuralAudio;
+      try {
+        neuralAudio = await _serverNeuralVoiceService.synthesize(
+          chunkText,
+          profile: profile,
+          settings: VoiceSettings(
+            languageCode: language,
+            speedMultiplier: speedMultiplier,
+            pitch: profile.pitch,
+          ),
+        );
+      } catch (e) {
+        debugPrint(
+          '[VoiceService] Neural chunk ${chunkIndex + 1}/${chunks.length} '
+          'dispatch exception: $e',
+        );
+      }
+
+      if (_activeSpeechRequestId != currentRequestId) {
+        debugPrint(
+          '[VoiceService] Stale speech request $currentRequestId discarded '
+          'after neural chunk ${chunkIndex + 1}/${chunks.length}.',
+        );
+        return;
+      }
+
+      final audioBytes = neuralAudio?.bytes;
+
+      if (audioBytes != null && audioBytes.isNotEmpty) {
+        var playedFromCacheFile = false;
+
+        // Step 3: Cache successful neural audio for this exact chunk.
+        if (!kIsWeb && chunkHashKey.isNotEmpty) {
+          try {
+            final savedFile =
+                await LocalVoiceCacheManager.instance.saveAudioBytes(
+              chunkHashKey,
+              audioBytes,
+            );
+
+            if (_activeSpeechRequestId != currentRequestId) return;
+
+            if (savedFile != null && await savedFile.exists()) {
+              await _playCachedFile(savedFile, currentRequestId);
+              playedFromCacheFile = true;
+            }
+          } catch (cacheErr) {
+            debugPrint(
+              '[VoiceService] Warning: Could not cache neural chunk '
+              '${chunkIndex + 1}/${chunks.length}: $cacheErr',
+            );
+          }
+        }
+
+        if (_activeSpeechRequestId != currentRequestId) return;
+
+        // Web or cache-write failure: play directly from memory.
+        if (!playedFromCacheFile) {
+          await _playAudioBytes(audioBytes, currentRequestId);
+        }
+
+        if (_activeSpeechRequestId != currentRequestId) return;
+        continue;
+      }
+
+      // Neural synthesis failed for this chunk. Do not restart the whole
+      // response from the beginning: speak only this chunk and the remaining
+      // chunks through the device fallback.
       if (_activeSpeechRequestId != currentRequestId) return;
-      await _playAudioBytes(audioBytes, currentRequestId);
+
+      final remainingText = chunks.sublist(chunkIndex).join(' ').trim();
+
+      debugPrint(
+        '[VoiceService] Neural synthesis unavailable at chunk '
+        '${chunkIndex + 1}/${chunks.length}. Falling back to device TTS '
+        'for the remaining ${chunks.length - chunkIndex} chunk(s).',
+      );
+
+      if (remainingText.isNotEmpty) {
+        _notifyPlaybackStarted();
+
+        await _deviceTtsVoiceService.synthesize(
+          remainingText,
+          profile: profile,
+          settings: VoiceSettings(
+            languageCode: language,
+            speedMultiplier: speedMultiplier,
+            pitch: profile.pitch,
+          ),
+        );
+      }
+
       return;
     }
-
-    // Step 6: If the server is unavailable, synthesis fails, times out, or no server URL is configured ->
-    // fall back to DeviceTtsVoiceGenerationService / flutter_tts.
-    if (_activeSpeechRequestId != currentRequestId) return;
-
-    debugPrint(
-      '[VoiceService] Server neural voice unavailable or failed. Falling back to DeviceTtsVoiceGenerationService (flutter_tts).',
-    );
-
-    await _deviceTtsVoiceService.synthesize(
-      cleanText,
-      profile: profile,
-      settings: VoiceSettings(
-        languageCode: language,
-        speedMultiplier: speedMultiplier,
-        pitch: profile.pitch,
-      ),
-    );
   }
 
   void _notifyPlaybackStarted() {
