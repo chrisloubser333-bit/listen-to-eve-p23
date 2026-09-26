@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:listen_to_eve/models/conversation_state.dart';
 import 'package:listen_to_eve/models/evidence_item.dart';
 import 'package:listen_to_eve/models/resolved_conversation_context.dart';
 import 'package:listen_to_eve/models/tool_execution_record.dart';

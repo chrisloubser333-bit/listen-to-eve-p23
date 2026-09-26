@@ -26,14 +26,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Status bar style for dark futuristic look
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.background,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
-
   final storage = StorageService();
   await storage.init();
 
@@ -149,13 +141,27 @@ class LteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Force the futuristic dark theme as the primary experience
+    final darkMode = context.watch<SettingsProvider>().darkMode;
+    final overlayStyle = darkMode
+        ? SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: AppTheme.background,
+            systemNavigationBarIconBrightness: Brightness.light,
+          )
+        : SystemUiOverlayStyle.dark.copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: AppTheme.lightBackground,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          );
+
+    SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+
     return MaterialApp(
       title: 'Listen to Eve',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
+      themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
       darkTheme: AppTheme.darkTheme,
-      theme: AppTheme.darkTheme, // also set light to dark for consistency
+      theme: AppTheme.lightTheme,
       home: const ChatScreen(),
     );
   }

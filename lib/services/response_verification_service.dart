@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import '../models/evidence_item.dart';
 import '../models/resolved_conversation_context.dart';
 import '../models/tool_execution_record.dart';
 
@@ -67,14 +66,9 @@ class ResponseVerificationService {
     final sources = effectiveTool?.sources ?? [];
     final evidence = effectiveTool?.evidence ?? [];
 
-    // -------------------------------------------------------------------------
-    // 1. False Tool / Re-search Claim Verification
-    // -------------------------------------------------------------------------
-    // If no search ran on this turn (e.g. source follow-up) but response claims it searched again
     if (resolvedContext.isAskingForSources || (effectiveTool == null && resolvedContext.isFollowUp)) {
       if (_claimsRecentSearch(candidate, isAf)) {
         issues.add('false_search_claim');
-        // If the query was purely asking for sources, ensure response focuses on existing sources
         if (resolvedContext.isAskingForSources && effectiveTool != null && effectiveTool.success) {
           final sourcesText = sources.isNotEmpty
               ? sources.join(', ')
@@ -89,16 +83,10 @@ class ResponseVerificationService {
       }
     }
 
-    // -------------------------------------------------------------------------
-    // 2. Unsupported Source Claims Verification
-    // -------------------------------------------------------------------------
-    // Detect if the response names prominent news/web sources that are NOT in the actual sources list
     final unsupportedSources = _findUnsupportedSources(candidate, sources);
     if (unsupportedSources.isNotEmpty) {
       issues.add('unsupported_source_claim: ${unsupportedSources.join(", ")}');
       debugPrint('[Verifier] Flagged unsupported source claims: $unsupportedSources (actual: $sources)');
-
-      // Repair: If the actual tool ran with real sources, replace or qualify the source assertion
       if (sources.isNotEmpty) {
         final realSourcesText = sources.join(', ');
         for (final fakeSource in unsupportedSources) {
@@ -106,7 +94,6 @@ class ResponseVerificationService {
           candidate = candidate.replaceAll(regex, realSourcesText);
         }
       } else if (effectiveTool == null || !effectiveTool.success) {
-        // No valid search ran
         candidate = _formatNoVerifiedSourcesResponse(
           characterId: characterId,
           query: effectiveTool?.query ?? resolvedContext.activeTopic ?? (isAf ? 'die onderwerp' : 'that'),
@@ -115,10 +102,6 @@ class ResponseVerificationService {
       }
     }
 
-    // -------------------------------------------------------------------------
-    // 3. Failed or Empty Search Grounding Verification
-    // -------------------------------------------------------------------------
-    // If the tool failed or found zero results, ensure the response does NOT present fabricated facts
     if (effectiveTool != null && !effectiveTool.success) {
       if (_presentsFactualFindings(candidate, isAf)) {
         issues.add('unsupported_factual_claim_on_failed_search');
@@ -130,11 +113,6 @@ class ResponseVerificationService {
       }
     }
 
-    // -------------------------------------------------------------------------
-    // 4. Same-Name / User Identity Conflation Safety
-    // -------------------------------------------------------------------------
-    // If user introduced their name (e.g. "I am Chris Loubser") and response asserts third-party
-    // public records as absolute, indisputable facts about the user's personal identity
     if (userName != null && userName.isNotEmpty) {
       final lowerUserMsg = userMessage.toLowerCase();
       final isSelfFactQuery = lowerUserMsg.contains('about me') ||
@@ -153,9 +131,6 @@ class ResponseVerificationService {
       }
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Verification Status Follow-Up Grounding ("Which parts are verified?")
-    // -------------------------------------------------------------------------
     if (resolvedContext.resolvedIntent == 'ask_verification_status' ||
         userMessage.toLowerCase().contains('which parts are verified') ||
         userMessage.toLowerCase().contains('watter dele is geverifieer') ||
@@ -191,10 +166,6 @@ class ResponseVerificationService {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Detection Helpers
-  // ---------------------------------------------------------------------------
-
   bool _claimsRecentSearch(String text, bool isAf) {
     final lower = text.toLowerCase();
     const searchClaims = [
@@ -216,44 +187,30 @@ class ResponseVerificationService {
   List<String> _findUnsupportedSources(String text, List<String> actualSources) {
     final lower = text.toLowerCase();
     final normalizedActual = actualSources.map((s) => s.toLowerCase()).toSet();
-
     const knownMajorSources = [
       'reuters', 'bloomberg', 'cnn', 'bbc', 'new york times', 'the guardian',
       'associated press', 'washington post', 'forbes', 'wsj', 'news24',
       'netwerk24', 'maroela media', 'daily maverick', 'techcrunch', 'wired'
     ];
-
     final unsupported = <String>[];
     for (final source in knownMajorSources) {
-      final matchesText = lower.contains(source);
-      if (matchesText) {
-        final isActuallyInSources = normalizedActual.any((actual) => actual.contains(source));
-        if (!isActuallyInSources) {
-          unsupported.add(source);
-        }
+      if (lower.contains(source) && !normalizedActual.any((actual) => actual.contains(source))) {
+        unsupported.add(source);
       }
     }
-
     return unsupported;
   }
 
   bool _presentsFactualFindings(String text, bool isAf) {
     final lower = text.toLowerCase();
     if (isAf) {
-      return lower.contains('die soektog het gevind') ||
-          lower.contains('hier is wat ek gevind het') ||
-          lower.contains('volgens die web');
-    } else {
-      return lower.contains('the search found that') ||
-          lower.contains('here is what i found') ||
-          lower.contains('according to the web');
+      return lower.contains('die soektog het gevind') || lower.contains('hier is wat ek gevind het') || lower.contains('volgens die web');
     }
+    return lower.contains('the search found that') || lower.contains('here is what i found') || lower.contains('according to the web');
   }
 
   bool _claimsAbsoluteIdentityConflation(String text, String userName, bool isAf) {
     final lower = text.toLowerCase();
-    // If response does NOT contain any qualifying hedge (e.g. "public profile for someone with your name",
-    // "cannot verify if this is you", "iemand met jou naam"), but makes direct identity assertions ("You are...", "Jy is...")
     final hasHedge = lower.contains('cannot verify') ||
         lower.contains('can\'t verify') ||
         lower.contains('someone named') ||
@@ -262,84 +219,34 @@ class ResponseVerificationService {
         lower.contains('kan nie verifieer nie') ||
         lower.contains('iemand met jou naam') ||
         lower.contains('openbare rekords vir');
-
-    if (!hasHedge && (lower.contains('you are a') || lower.contains('you founded') || lower.contains('you work at') || lower.contains('jy is \'n') || lower.contains('jy werk by'))) {
-      return true;
-    }
-
-    return false;
+    return !hasHedge && (lower.contains('you are a') || lower.contains('you founded') || lower.contains('you work at') || lower.contains('jy is \'n') || lower.contains('jy werk by'));
   }
 
-  String _repairSameNameConflation({
-    required String response,
-    required String userName,
-    required bool isAf,
-  }) {
-    if (isAf) {
-      return 'Ek het openbare inligting gevind vir iemand genaamd $userName, maar let wel: ek kan nie verifieer of hierdie openbare rekords direk na jou verwys nie. $response';
-    } else {
-      return 'I found public records mentioning someone named $userName, but please note: I cannot verify whether these public records refer directly to you. $response';
-    }
+  String _repairSameNameConflation({required String response, required String userName, required bool isAf}) {
+    return isAf
+        ? 'Ek het openbare inligting gevind vir iemand genaamd $userName, maar let wel: ek kan nie verifieer of hierdie openbare rekords direk na jou verwys nie. $response'
+        : 'I found public records mentioning someone named $userName, but please note: I cannot verify whether these public records refer directly to you. $response';
   }
 
-  String _formatNaturalSourceConfirmation({
-    required String characterId,
-    required String query,
-    required String sourcesText,
-    required bool isAf,
-  }) {
+  String _formatNaturalSourceConfirmation({required String characterId, required String query, required String sourcesText, required bool isAf}) {
     switch (characterId.toLowerCase()) {
-      case 'ara':
-        return isAf
-            ? 'Toe ek vroeër vir $query gekyk het, het ek openbare bronne soos $sourcesText geraadpleeg.'
-            : 'When I looked up $query earlier, I consulted public online sources including $sourcesText.';
-      case 'leo':
-        return isAf
-            ? 'Vir $query het ek vroeër die web geraadpleeg by $sourcesText.'
-            : 'For $query, I checked public records across $sourcesText.';
-      case 'rex':
-        return isAf
-            ? 'Ek het vroeër aanlyn vir $query gekyk by $sourcesText!'
-            : 'I checked online earlier for $query across $sourcesText!';
-      case 'sal':
-        return isAf
-            ? 'Ek het vroeër vir $query op die web gekyk, hoofsaaklik by $sourcesText.'
-            : 'I looked up $query earlier, mainly checking $sourcesText.';
+      case 'ara': return isAf ? 'Toe ek vroeër vir $query gekyk het, het ek openbare bronne soos $sourcesText geraadpleeg.' : 'When I looked up $query earlier, I consulted public online sources including $sourcesText.';
+      case 'leo': return isAf ? 'Vir $query het ek vroeër die web geraadpleeg by $sourcesText.' : 'For $query, I checked public records across $sourcesText.';
+      case 'rex': return isAf ? 'Ek het vroeër aanlyn vir $query gekyk by $sourcesText!' : 'I checked online earlier for $query across $sourcesText!';
+      case 'sal': return isAf ? 'Ek het vroeër vir $query op die web gekyk, hoofsaaklik by $sourcesText.' : 'I looked up $query earlier, mainly checking $sourcesText.';
       case 'eve':
-      default:
-        return isAf
-            ? 'Toe ek vroeër vir $query aanlyn gesoek het, het ek na inligting op $sourcesText gekyk.'
-            : 'When I searched online for $query earlier, I looked across sources like $sourcesText.';
+      default: return isAf ? 'Toe ek vroeër vir $query aanlyn gesoek het, het ek na inligting op $sourcesText gekyk.' : 'When I searched online for $query earlier, I looked across sources like $sourcesText.';
     }
   }
 
-  String _formatNoVerifiedSourcesResponse({
-    required String characterId,
-    required String query,
-    required bool isAf,
-  }) {
+  String _formatNoVerifiedSourcesResponse({required String characterId, required String query, required bool isAf}) {
     switch (characterId.toLowerCase()) {
-      case 'ara':
-        return isAf
-            ? 'Ek het aanlyn probeer kyk vir $query, maar kon geen geverifieerde bronne of resultate vind nie.'
-            : 'I looked online for $query, but found no verified sources or public records.';
-      case 'leo':
-        return isAf
-            ? 'Ek het probeer soek vir $query, maar die soektog het geen geldige bronne opgelewer nie.'
-            : 'I searched for $query, but no valid source data was returned.';
-      case 'rex':
-        return isAf
-            ? 'Ek het probeer soek vir $query, maar niks het opgedaag nie!'
-            : 'I tried checking online for $query, but didn\'t get any source hits!';
-      case 'sal':
-        return isAf
-            ? 'Ek het aanlyn gekyk vir $query, maar daar was geen bronne beskikbaar nie.'
-            : 'I checked online for $query, but no sources came back.';
+      case 'ara': return isAf ? 'Ek het aanlyn probeer kyk vir $query, maar kon geen geverifieerde bronne of resultate vind nie.' : 'I looked online for $query, but found no verified sources or public records.';
+      case 'leo': return isAf ? 'Ek het probeer soek vir $query, maar die soektog het geen geldige bronne opgelewer nie.' : 'I searched for $query, but no valid source data was returned.';
+      case 'rex': return isAf ? 'Ek het probeer soek vir $query, maar niks het opgedaag nie!' : 'I tried checking online for $query, but didn\'t get any source hits!';
+      case 'sal': return isAf ? 'Ek het aanlyn gekyk vir $query, maar daar was geen bronne beskikbaar nie.' : 'I checked online for $query, but no sources came back.';
       case 'eve':
-      default:
-        return isAf
-            ? 'Ek het aanlyn probeer kyk vir $query, maar kon geen geverifieerde bronne of resultate vind nie.'
-            : 'I tried searching online for $query, but no verified sources or results were returned.';
+      default: return isAf ? 'Ek het aanlyn probeer kyk vir $query, maar kon geen geverifieerde bronne of resultate vind nie.' : 'I tried searching online for $query, but no verified sources or results were returned.';
     }
   }
 }

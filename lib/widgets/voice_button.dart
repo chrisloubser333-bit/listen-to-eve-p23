@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class VoiceButton extends StatelessWidget {
   final bool isListening;
@@ -15,23 +14,26 @@ class VoiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     Color glowColor;
     Color bgColor;
     IconData icon;
 
     if (isListening) {
-      glowColor = AppTheme.accent;
-      bgColor = AppTheme.accent.withOpacity(0.25);
+      glowColor = scheme.tertiary;
+      bgColor = scheme.tertiary.withValues(alpha: 0.18);
       icon = Icons.mic;
     } else if (isSpeaking) {
-      glowColor = AppTheme.secondary;
-      bgColor = AppTheme.secondary.withOpacity(0.25);
+      glowColor = scheme.secondary;
+      bgColor = scheme.secondary.withValues(alpha: 0.18);
       icon = Icons.volume_up_rounded;
     } else {
-      glowColor = AppTheme.primary;
-      bgColor = AppTheme.surfaceLight;
+      glowColor = scheme.primary;
+      bgColor = scheme.surfaceContainerHighest;
       icon = Icons.mic_none_rounded;
     }
+
+    final active = isListening || isSpeaking;
 
     return GestureDetector(
       onTap: onPressed,
@@ -43,20 +45,20 @@ class VoiceButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: bgColor,
           border: Border.all(
-            color: glowColor.withOpacity(isListening || isSpeaking ? 0.9 : 0.45),
+            color: glowColor.withValues(alpha: active ? 0.9 : 0.45),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: glowColor.withOpacity(isListening || isSpeaking ? 0.55 : 0.22),
-              blurRadius: isListening || isSpeaking ? 18 : 10,
-              spreadRadius: isListening || isSpeaking ? 2 : 0,
+              color: glowColor.withValues(alpha: active ? 0.45 : 0.16),
+              blurRadius: active ? 18 : 10,
+              spreadRadius: active ? 2 : 0,
             ),
           ],
         ),
         child: Icon(
           icon,
-          color: isListening || isSpeaking ? glowColor : AppTheme.textPrimary,
+          color: active ? glowColor : scheme.onSurface,
           size: 26,
         ),
       ),
