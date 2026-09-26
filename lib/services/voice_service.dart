@@ -386,7 +386,6 @@ class VoiceService {
     );
 
     final cleanText = sanitizeResult['cleanText'] ?? text.trim();
-    final hashKey = sanitizeResult['hashKey'] ?? '';
 
     if (cleanText.isEmpty || _activeSpeechRequestId != currentRequestId) {
       return;
@@ -456,10 +455,19 @@ class VoiceService {
             '${chunkIndex + 1}/${chunks.length}.',
           );
 
-          await _playCachedFile(cachedFile, currentRequestId);
+          final cachePlaybackSucceeded =
+              await _playCachedFile(cachedFile, currentRequestId);
 
           if (_activeSpeechRequestId != currentRequestId) return;
-          continue;
+
+          if (cachePlaybackSucceeded) {
+            continue;
+          }
+
+          debugPrint(
+            '[VoiceService] Cached neural chunk playback failed; '
+            'regenerating chunk ${chunkIndex + 1}/${chunks.length}.',
+          );
         }
       }
 
@@ -507,8 +515,8 @@ class VoiceService {
             if (_activeSpeechRequestId != currentRequestId) return;
 
             if (savedFile != null && await savedFile.exists()) {
-              await _playCachedFile(savedFile, currentRequestId);
-              playedFromCacheFile = true;
+              playedFromCacheFile =
+                  await _playCachedFile(savedFile, currentRequestId);
             }
           } catch (cacheErr) {
             debugPrint(
@@ -521,12 +529,23 @@ class VoiceService {
         if (_activeSpeechRequestId != currentRequestId) return;
 
         // Web or cache-write failure: play directly from memory.
-        if (!playedFromCacheFile) {
-          await _playAudioBytes(audioBytes, currentRequestId);
+        var playbackSucceeded = playedFromCacheFile;
+
+        if (!playbackSucceeded) {
+          playbackSucceeded =
+              await _playAudioBytes(audioBytes, currentRequestId);
         }
 
         if (_activeSpeechRequestId != currentRequestId) return;
-        continue;
+
+        if (playbackSucceeded) {
+          continue;
+        }
+
+        debugPrint(
+          '[VoiceService] Neural audio playback failed for chunk '
+          '${chunkIndex + 1}/${chunks.length}; using device fallback.',
+        );
       }
 
       // Neural synthesis failed for this chunk. Do not restart the whole
@@ -581,41 +600,62 @@ class VoiceService {
     } catch (_) {}
   }
 
-  Future<void> _playCachedFile(File file, int currentRequestId) async {
+  Future<bool> _playCachedFile(File file, int currentRequestId) async {
     try {
-      if (_activeSpeechRequestId != currentRequestId) return;
+      if (_activeSpeechRequestId != currentRequestId) return false;
+
       _isSpeaking = true;
       onSpeakingStateChanged?.call(true);
 
       await _audioPlayer.setFilePath(file.path);
+
+      if (_activeSpeechRequestId != currentRequestId) return false;
+
       _notifyPlaybackStarted();
       await _audioPlayer.play();
+
+      return _activeSpeechRequestId == currentRequestId;
     } catch (e) {
       debugPrint('[VoiceService] Error playing cached file: $e');
+
       if (_activeSpeechRequestId == currentRequestId) {
         _isSpeaking = false;
         onSpeakingStateChanged?.call(false);
       }
+
+      return false;
     }
   }
 
-  Future<void> _playAudioBytes(Uint8List bytes, int currentRequestId) async {
+  Future<bool> _playAudioBytes(
+    Uint8List bytes,
+    int currentRequestId,
+  ) async {
     try {
-      if (_activeSpeechRequestId != currentRequestId) return;
+      if (_activeSpeechRequestId != currentRequestId) return false;
+
       _isSpeaking = true;
       onSpeakingStateChanged?.call(true);
 
-      // Create a temporary data source for JustAudio
+      // Create a temporary data source for JustAudio.
       final source = _BytesAudioSource(bytes);
       await _audioPlayer.setAudioSource(source);
+
+      if (_activeSpeechRequestId != currentRequestId) return false;
+
       _notifyPlaybackStarted();
       await _audioPlayer.play();
+
+      return _activeSpeechRequestId == currentRequestId;
     } catch (e) {
       debugPrint('[VoiceService] Error playing audio bytes: $e');
+
       if (_activeSpeechRequestId == currentRequestId) {
         _isSpeaking = false;
         onSpeakingStateChanged?.call(false);
       }
+
+      return false;
     }
   }
 
